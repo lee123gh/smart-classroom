@@ -3867,6 +3867,7 @@ function studentCheckin() {
 
 function renderStudentCheckinHistory() {
     const tbody = document.getElementById('studentCheckinHistory');
+    if (!tbody) return;
     const dates = Object.keys(attendanceData).sort().reverse();
 
     tbody.innerHTML = dates.map(date => {
@@ -4273,12 +4274,10 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
     });
 });
 
-// 初始化
-renderStudentCheckinHistory();
-
-// 初始化班级选择器（页面加载时）
-updateAllTeacherClassSelectors();
-updateAllStudentClassSelectors();
+// 初始化（安全调用，防止DOM不存在时报错）
+try { renderStudentCheckinHistory(); } catch(e) {}
+try { updateAllTeacherClassSelectors(); } catch(e) {}
+try { updateAllStudentClassSelectors(); } catch(e) {}
 </script>
 
 </body>
