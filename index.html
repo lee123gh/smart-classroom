@@ -1236,14 +1236,24 @@
 
         <!-- 注册表单 -->
         <div id="registerFormArea" style="display:none;">
+            <div class="role-selector" style="margin-bottom:20px;">
+                <button class="role-btn active" data-reg-role="student" onclick="selectRegRole('student')">
+                    <div>👨‍🎓</div>
+                    <div>学生注册</div>
+                </button>
+                <button class="role-btn" data-reg-role="teacher" onclick="selectRegRole('teacher')">
+                    <div>👨‍🏫</div>
+                    <div>教师注册</div>
+                </button>
+            </div>
             <form id="registerForm" onsubmit="handleRegister(event)">
                 <div class="form-group">
                     <label>姓名</label>
                     <input type="text" id="regName" placeholder="请输入真实姓名" required>
                 </div>
                 <div class="form-group">
-                    <label>学号/工号</label>
-                    <input type="text" id="regId" placeholder="请输入学号或工号" required>
+                    <label id="regIdLabel">学号</label>
+                    <input type="text" id="regId" placeholder="请输入学号" required>
                 </div>
                 <div class="form-group">
                     <label>手机号</label>
@@ -1257,7 +1267,7 @@
                     <label>确认密码</label>
                     <input type="password" id="regPasswordConfirm" placeholder="请再次输入密码" required>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="regClassGroup">
                     <label>选择班级</label>
                     <select id="regClass">
                         <option value="class1">计算机科学与技术 2023级1班</option>
@@ -2651,6 +2661,16 @@ function switchAuthTab(tab) {
     document.getElementById('registerFormArea').style.display = tab === 'register' ? 'block' : 'none';
 }
 
+let regRole = 'student';
+function selectRegRole(role) {
+    regRole = role;
+    document.querySelectorAll('[data-reg-role]').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-reg-role="${role}"]`).classList.add('active');
+    document.getElementById('regIdLabel').textContent = role === 'teacher' ? '工号' : '学号';
+    document.getElementById('regId').placeholder = role === 'teacher' ? '请输入工号' : '请输入学号';
+    document.getElementById('regClassGroup').style.display = role === 'teacher' ? 'none' : 'block';
+}
+
 function selectRole(role) {
     currentRole = role;
     document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
@@ -2660,18 +2680,34 @@ function selectRole(role) {
 
 function handleLogin(e) {
     e.preventDefault();
-    const username = document.getElementById('username').value;
+    const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    if (!username) return;
+    if (!username || !password) {
+        showToast('请输入用户名和密码', 'error');
+        return;
+    }
 
-    // 检查注册用户密码
+    // 必须注册后才能登录
     const regUser = registeredUsers.find(u => u.name === username || u.id === username);
-    if (regUser && regUser.password && password !== regUser.password) {
+    if (!regUser) {
+        showToast('用户不存在，请先注册', 'error');
+        return;
+    }
+
+    // 校验密码
+    if (password !== regUser.password) {
         showToast('密码错误，请重试', 'error');
         return;
     }
 
-    currentUser = { name: regUser ? regUser.name : username, role: currentRole };
+    // 校验角色：注册为教师只能登录教师端，注册为学生只能登录学生端
+    if (regUser.role && regUser.role !== currentRole) {
+        const expectedRoleText = regUser.role === 'teacher' ? '教师端' : '学生端';
+        showToast(`该账号注册为${regUser.role === 'teacher' ? '教师' : '学生'}，请在${expectedRoleText}登录`, 'error');
+        return;
+    }
+
+    currentUser = { name: regUser.name, role: currentRole };
 
     if (currentRole === 'teacher') {
         document.getElementById('loginPage').style.display = 'none';
@@ -2744,17 +2780,25 @@ function handleRegister(e) {
         return;
     }
 
-    const newUser = { name, id, phone, password, class: classText, classId: className.value, registeredAt: new Date().toISOString().split('T')[0] };
+    const newUser = {
+        name, id, phone, password,
+        role: regRole,
+        class: regRole === 'student' ? classText : null,
+        classId: regRole === 'student' ? className.value : null,
+        registeredAt: new Date().toISOString().split('T')[0]
+    };
     registeredUsers.push(newUser);
     localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
 
-    // 自动添加到默认班级的学生名单
-    const newStudent = { id: 's' + Date.now(), name: name, avatar: name.charAt(0) };
-    if (classData.length > 0) {
-        classData[0].students.push(newStudent);
-        localStorage.setItem('classData', JSON.stringify(classData));
+    // 学生注册时自动添加到默认班级
+    if (regRole === 'student') {
+        const newStudent = { id: 's' + Date.now(), name: name, avatar: name.charAt(0) };
+        if (classData.length > 0) {
+            classData[0].students.push(newStudent);
+            localStorage.setItem('classData', JSON.stringify(classData));
+        }
+        students.push(newStudent);
     }
-    students.push(newStudent);
 
     showToast('注册成功！请登录', 'success');
 
@@ -2762,7 +2806,10 @@ function handleRegister(e) {
     switchAuthTab('login');
     document.getElementById('username').value = id;
     document.getElementById('password').value = '';
-    currentRole = 'student';
+    currentRole = regRole;
+    document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-role="${regRole}"]`).classList.add('active');
+    document.getElementById('classSelectGroup').style.display = regRole === 'student' ? 'block' : 'none';
     document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector('[data-role="student"]').classList.add('active');
     document.getElementById('classSelectGroup').style.display = 'block';
