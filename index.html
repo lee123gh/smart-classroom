@@ -3218,24 +3218,35 @@ function handleRosterUpload(event) {
     reader.readAsText(file, 'UTF-8');
 }
 
-// 修复乱码文本
+// 修复乱码文本 - 将UTF-8错误解析的GBK乱码替换为正确字符
 function fixGarbledText(text) {
-    // 常见 GBK->UTF8 乱码替换
+    // 这些是多字节UTF-8字符被错误当作单字节解析时产生的乱码模式
     const fixes = {
-        '\\u00E2\\u20AC\\u201C': '“', '\\u00E2\\u20AC\\u201D': '”',
-        '\\u00E2\\u20AC\\u02DC': '～', '\\u00E2\\u20AC\\u2122': '\u2019',
-        '\\u00C3\\u2014': '—', '\\u00C2\\u00B7': '·',
-        '\\u00E3\\u0080\\u0081': '、', '\\u00EF\\u00BC\\u008C': '，',
-        '\\u00EF\\u00BC\\u009B': '【', '\\u00EF\\u00BC\\u009D': '】',
-        '\\u00EF\\u00BC\\u0088': '（', '\\u00EF\\u00BC\\u0089': '）',
-        '\\u00EF\\u00BC\\u009A': '：', '\\u00EF\\u00BC\\u009B': '；',
-        '\\u00EF\\u00BC\\u009F': '？', '\\u00EF\\u00BC\\u0081': '！'
+        '\u00E2\u20AC\u201C': '\u201C',  // "
+        '\u00E2\u20AC\u201D': '\u201D',  // "
+        '\u00E2\u20AC\u02DC': '\uFF5E',  // ～
+        '\u00E2\u20AC\u2122': '\u2019',  // '
+        '\u00C3\u2014': '\u2014',        // —
+        '\u00C2\u00B7': '\u00B7',        // ·
+        '\u00E3\u0080\u0081': '\u3001',  // 、
+        '\u00EF\u00BC\u008C': '\uFF0C',  // ，
+        '\u00EF\u00BC\u009B': '\u3010',  // 【
+        '\u00EF\u00BC\u009D': '\u3011',  // 】
+        '\u00EF\u00BC\u0088': '\uFF08',  // （
+        '\u00EF\u00BC\u0089': '\uFF09',  // ）
+        '\u00EF\u00BC\u009A': '\uFF1A',  // ：
+        '\u00EF\u00BC\u009B': '\uFF1B',  // ；
+        '\u00EF\u00BC\u009F': '\uFF1F',  // ？
+        '\u00EF\u00BC\u0081': '\uFF01'   // ！
     };
     
     let result = text;
     Object.keys(fixes).forEach(garbled => {
-        const regex = new RegExp(garbled.replace(/\\u/g, '\\u'), 'g');
-        result = result.replace(regex, fixes[garbled]);
+        // 使用字符串分割替换，避免正则特殊字符问题
+        const correct = fixes[garbled];
+        while (result.indexOf(garbled) !== -1) {
+            result = result.split(garbled).join(correct);
+        }
     });
     
     return result;
