@@ -2716,8 +2716,12 @@ function switchAuthTab(tab) {
 let regRole = 'student';
 function selectRegRole(role) {
     regRole = role;
-    document.querySelectorAll('[data-reg-role]').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-reg-role="${role}"]`).classList.add('active');
+    const container = document.getElementById('registerFormArea');
+    if (container) {
+        container.querySelectorAll('[data-reg-role]').forEach(btn => btn.classList.remove('active'));
+        const btn = container.querySelector(`[data-reg-role="${role}"]`);
+        if (btn) btn.classList.add('active');
+    }
     document.getElementById('regIdLabel').textContent = role === 'teacher' ? '工号' : '学号';
     document.getElementById('regId').placeholder = role === 'teacher' ? '请输入工号' : '请输入学号';
     document.getElementById('regClassGroup').style.display = role === 'teacher' ? 'none' : 'block';
@@ -2725,8 +2729,12 @@ function selectRegRole(role) {
 
 function selectRole(role) {
     currentRole = role;
-    document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-role="${role}"]`).classList.add('active');
+    const container = document.getElementById('loginFormArea');
+    if (container) {
+        container.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+        const btn = container.querySelector(`[data-role="${role}"]`);
+        if (btn) btn.classList.add('active');
+    }
     document.getElementById('classSelectGroup').style.display = role === 'student' ? 'block' : 'none';
 }
 
