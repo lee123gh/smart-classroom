@@ -2320,7 +2320,7 @@ function loadStudentClassIsolatedData(key, fallback) {
 }
 
 let currentUser = null;
-let currentRole = 'teacher';
+var currentRole = 'teacher';
 let checkinCode = null;
 let checkinTimer = null;
 let checkinTimeLeft = 300;
@@ -2734,7 +2734,7 @@ function selectRegRole(role) {
 }
 
 function selectRole(role) {
-    window.currentRole = role;
+    currentRole = role;
     const container = document.getElementById('loginFormArea');
     if (container) {
         const buttons = container.querySelectorAll('.role-btn');
