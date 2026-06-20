@@ -2718,21 +2718,30 @@ function selectRegRole(role) {
     regRole = role;
     const container = document.getElementById('registerFormArea');
     if (container) {
-        container.querySelectorAll('[data-reg-role]').forEach(btn => btn.classList.remove('active'));
-        const btn = container.querySelector(`[data-reg-role="${role}"]`);
+        const buttons = container.querySelectorAll('[data-reg-role]');
+        for (let i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove('active');
+        }
+        const btn = container.querySelector('[data-reg-role="' + role + '"]');
         if (btn) btn.classList.add('active');
     }
-    document.getElementById('regIdLabel').textContent = role === 'teacher' ? '工号' : '学号';
-    document.getElementById('regId').placeholder = role === 'teacher' ? '请输入工号' : '请输入学号';
-    document.getElementById('regClassGroup').style.display = role === 'teacher' ? 'none' : 'block';
+    const regIdLabel = document.getElementById('regIdLabel');
+    const regId = document.getElementById('regId');
+    const regClassGroup = document.getElementById('regClassGroup');
+    if (regIdLabel) regIdLabel.textContent = role === 'teacher' ? '工号' : '学号';
+    if (regId) regId.placeholder = role === 'teacher' ? '请输入工号' : '请输入学号';
+    if (regClassGroup) regClassGroup.style.display = role === 'teacher' ? 'none' : 'block';
 }
 
 function selectRole(role) {
-    currentRole = role;
+    window.currentRole = role;
     const container = document.getElementById('loginFormArea');
     if (container) {
-        container.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-        const btn = container.querySelector(`[data-role="${role}"]`);
+        const buttons = container.querySelectorAll('.role-btn');
+        for (let i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove('active');
+        }
+        const btn = container.querySelector('[data-role="' + role + '"]');
         if (btn) btn.classList.add('active');
     }
     const classSelectGroup = document.getElementById('classSelectGroup');
