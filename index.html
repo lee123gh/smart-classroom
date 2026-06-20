@@ -2242,6 +2242,32 @@ let teacherCurrentClassId = localStorage.getItem('teacherCurrentClassId') || '';
 let studentJoinedClasses = JSON.parse(localStorage.getItem('studentJoinedClasses')) || [];
 let studentCurrentClassId = localStorage.getItem('studentCurrentClassId') || '';
 
+// 自动清理乱码学生数据（检测XML标签残留）
+function cleanGarbledStudentData() {
+    let cleaned = false;
+    classData.forEach(cls => {
+        if (!cls.students) return;
+        const before = cls.students.length;
+        cls.students = cls.students.filter(s => {
+            // 过滤包含XML标签、命名空间等乱码的姓名
+            if (!s.name || s.name.startsWith('<') || s.name.includes('xmlns') || 
+                s.name.includes('schemas-microsoft') || s.name.includes('html') ||
+                s.name.includes('xml') || s.name.includes('office:') ||
+                s.name.includes('urn:') || s.name.includes('http://') ||
+                s.name.includes('REC-') || s.name.includes('stylesheet') ||
+                s.name.length > 20) {
+                return false;
+            }
+            return true;
+        });
+        if (cls.students.length !== before) cleaned = true;
+    });
+    if (cleaned) {
+        localStorage.setItem('classData', JSON.stringify(classData));
+    }
+}
+cleanGarbledStudentData();
+
 // 初始化默认班级（仅首次）
 if (classData.length === 0) {
     classData = [{
