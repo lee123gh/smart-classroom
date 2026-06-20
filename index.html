@@ -2249,28 +2249,7 @@ function cleanGarbledStudentData() {
         if (!cls.students) return;
         const before = cls.students.length;
         cls.students = cls.students.filter(s => {
-            const n = s.name || '';
-            // 过滤包含XML标签、命名空间、CSS代码等乱码的姓名
-            if (!n || n.startsWith('<') || n.includes('xmlns') || 
-                n.includes('schemas-microsoft') || n.includes('html') ||
-                n.includes('xml') || n.includes('office:') ||
-                n.includes('urn:') || n.includes('http://') ||
-                n.includes('REC-') || n.includes('stylesheet') ||
-                // CSS相关
-                n.includes('table') && n.includes('{') ||
-                n.includes('@page') || n.includes('.font') ||
-                n.includes('font-size') || n.includes('color:') ||
-                n.includes('windowtext') || n.includes('10.0pt') ||
-                n.includes('mso-') || n.includes('style=') ||
-                // 代码特征
-                n.includes('{') && n.includes('}') ||
-                n.includes('/*') || n.includes('*/') ||
-                n.startsWith('.') && n.includes('{') ||
-                n.startsWith('#') && n.includes('{') ||
-                n.length > 20 || n.length < 2) {
-                return false;
-            }
-            return true;
+            return isValidStudentName(s.name || '');
         });
         if (cls.students.length !== before) cleaned = true;
     });
@@ -3178,23 +3157,43 @@ function handleRosterUpload(event) {
         
         // 通用：判断是否为有效学生姓名
         function isValidStudentName(name) {
-            if (!name || name.length < 2 || name.length > 20) return false;
-            // 过滤XML/CSS/代码特征
-            if (name.startsWith('<?xml') || name.startsWith('<') || name.startsWith('.') || name.startsWith('#') ||
-                name.startsWith('@') || name.startsWith('{') || name.startsWith('}') ||
-                name.startsWith('/*') || name.startsWith('*/') ||
-                name.includes('xmlns') || name.includes('schemas-microsoft') ||
-                name.includes('html') || name.includes('xml') || name.includes('office:') ||
-                name.includes('urn:') || name.includes('http://') || name.includes('REC-') ||
-                name.includes('stylesheet') || name.includes('font-size') ||
-                name.includes('color:') || name.includes('windowtext') ||
-                name.includes('10.0pt') || name.includes('mso-') || name.includes('style=') ||
-                name.includes('@page') || name.includes('.font') ||
-                (name.includes('{') && name.includes('}')) ||
-                (name.includes('/*') && name.includes('*/'))) return false;
-            // 清理XML标签残留
+            if (!name || typeof name !== 'string') return false;
+            name = name.trim();
+            if (name.length < 2 || name.length > 20) return false;
+            
+            // 过滤XML标签
+            if (name.startsWith('<?xml') || name.startsWith('<') || name.includes('xmlns')) return false;
+            
+            // 过滤URL/命名空间
+            if (name.includes('schemas-microsoft') || name.includes('http://') || 
+                name.includes('urn:') || name.includes('REC-')) return false;
+            
+            // 过滤CSS属性（根据截图中的实际乱码内容）
+            const cssPatterns = [
+                'font-weight:', 'font-style:', 'font-family:', 'font-size:',
+                'color:', 'background:', 'border:', 'padding-', 'margin-',
+                'text-align:', 'white-space:', 'vertical-align:', 'line-height:',
+                'display:', 'position:', 'float:', 'clear:',
+                'width:', 'height:', 'min-', 'max-',
+                'overflow:', 'visibility:', 'z-index:',
+                'table', 'tr ', 'tr{', 'td ', 'td{', 'th ', 'th{',
+                'col ', 'col{', 'br ', 'br{', 'div ', 'div{', 'span ', 'span{',
+                '.font', '#font', '@page', '@media', '@import',
+                'mso-', 'windowtext', '10.0pt', 'stylesheet',
+                'style=', 'class=', 'id=', 'name='
+            ];
+            for (let p of cssPatterns) {
+                if (name.includes(p)) return false;
+            }
+            
+            // 过滤包含CSS代码特征的行（冒号+分号 或 花括号）
+            if ((name.includes(':') && name.includes(';')) || 
+                (name.includes('{') || name.includes('}'))) return false;
+            
+            // 过滤XML/HTML残留
             name = name.replace(/<[^>]+>/g, '').trim();
             if (!name || name.length < 2) return false;
+            
             return name;
         }
 
