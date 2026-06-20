@@ -1206,9 +1206,12 @@
                 </button>
             </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
+                <div style="background:var(--bg-primary); padding:12px; border-radius:var(--radius-sm); margin-bottom:16px; border-left:4px solid var(--accent);">
+                    <p style="font-size:0.85rem; color:var(--text-secondary); margin:0;">请先注册账号后再登录。未注册用户无法登录系统。</p>
+                </div>
                 <div class="form-group">
-                    <label>用户名</label>
-                    <input type="text" id="username" placeholder="请输入用户名" required>
+                    <label>学号/工号</label>
+                    <input type="text" id="username" placeholder="请输入注册时的学号或工号" required>
                 </div>
                 <div class="form-group">
                     <label>密码</label>
@@ -2652,6 +2655,14 @@ function leaveClass(classId) {
 }
 
 // ===== 登录相关 =====
+// 版本标记：用于强制刷新旧数据
+const AUTH_VERSION = 'v2';
+const storedAuthVersion = localStorage.getItem('authVersion');
+if (storedAuthVersion !== AUTH_VERSION) {
+    // 清除旧版认证数据，强制重新注册
+    localStorage.removeItem('registeredUsers');
+    localStorage.setItem('authVersion', AUTH_VERSION);
+}
 let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
 
 function switchAuthTab(tab) {
