@@ -609,6 +609,40 @@
             font-size: 0.8rem;
         }
 
+        /* 考勤矩阵表格 */
+        .attendance-matrix {
+            font-size: 0.9rem;
+        }
+        .attendance-matrix th {
+            background: var(--bg-secondary);
+            padding: 10px 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .attendance-matrix td {
+            padding: 10px 8px;
+            transition: background 0.2s;
+        }
+        .attendance-matrix td:hover {
+            background: var(--bg-secondary);
+        }
+        .attendance-cell {
+            min-width: 50px;
+            user-select: none;
+        }
+        .attendance-cell.status-present {
+            color: var(--success);
+        }
+        .attendance-cell.status-late {
+            color: var(--accent);
+        }
+        .attendance-cell.status-absent {
+            color: var(--danger);
+        }
+        .attendance-cell.status-none {
+            color: var(--text-muted);
+        }
+
         /* 作业管理 */
         .homework-item {
             background: var(--bg-primary);
@@ -1478,8 +1512,8 @@
                             <div style="margin-bottom:24px;">
                                 <div class="submit-area" id="rosterUploadArea" onclick="document.getElementById('rosterFileInput').click()">
                                     <svg width="48" height="48" fill="none" stroke="var(--text-secondary)" viewBox="0 0 24 24" style="margin-bottom:12px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                                    <p style="color:var(--text-secondary);">点击上传考勤名单文件</p>
-                                    <p style="color:var(--text-muted); font-size:0.85rem; margin-top:8px;">支持 CSV、TXT、Excel 格式（每行一个学生姓名）</p>
+                                    <p style="color:var(--text-secondary);">点击上传考勤表文件</p>
+                                    <p style="color:var(--text-muted); font-size:0.85rem; margin-top:8px;">支持 CSV、TXT、Excel 格式</p>
                                     <input type="file" id="rosterFileInput" style="display:none;" accept=".csv,.txt,.xlsx,.xls" onchange="handleRosterUpload(event)">
                                 </div>
                                 <div id="rosterFileInfo" style="margin-top:16px; display:none;">
@@ -1490,12 +1524,31 @@
                                     </div>
                                 </div>
                             </div>
+                            <div style="background:var(--bg-primary); padding:16px; border-radius:var(--radius-sm); margin-bottom:20px;">
+                                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:8px;"><strong>考勤表格式说明：</strong></p>
+                                <p style="font-size:0.8rem; color:var(--text-muted);">第一列：学生姓名 | 后续列：日期（格式如 6-20）</p>
+                                <p style="font-size:0.8rem; color:var(--text-muted);">标记：√ 出勤 | ○ 迟到 | × 缺勤 | 空 未签到</p>
+                                <p style="font-size:0.8rem; color:var(--text-muted);">支持直接编辑下方表格，点击单元格可修改状态</p>
+                            </div>
+                            <div id="attendanceMatrix" style="margin-bottom:32px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                                    <h4>考勤明细表（点击单元格可编辑）</h4>
+                                    <div style="display:flex; gap:12px; align-items:center;">
+                                        <span style="font-size:0.8rem; color:var(--text-secondary);"><span style="color:var(--success); font-weight:600;">√</span> 出勤</span>
+                                        <span style="font-size:0.8rem; color:var(--text-secondary);"><span style="color:var(--accent); font-weight:600;">○</span> 迟到</span>
+                                        <span style="font-size:0.8rem; color:var(--text-secondary);"><span style="color:var(--danger); font-weight:600;">×</span> 缺勤</span>
+                                    </div>
+                                </div>
+                                <div id="attendanceMatrixContainer">
+                                    <!-- 动态生成 -->
+                                </div>
+                            </div>
                             <div id="attendanceStats">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                                     <h4>个人出勤统计</h4>
                                     <button class="btn btn-outline btn-sm" onclick="exportAttendanceStats()">
                                         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                                        导出统计
+                                        导出考勤表
                                     </button>
                                 </div>
                                 <table class="data-table">
@@ -2923,6 +2976,7 @@ function renderCheckinPage() {
     renderTodayCheckin();
     renderCheckinHistory();
     renderPersonalStats();
+    renderAttendanceMatrix();
 }
 
 function renderTodayCheckin() {
@@ -3045,30 +3099,83 @@ function renderPersonalStats() {
     }).join('');
 }
 
-// 考勤名单上传
+// 考勤名单上传 - 支持带考勤数据的表格导入
 function handleRosterUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const content = e.target.result;
+        let content = e.target.result;
+        
+        // 修复乱码：检测并移除 UTF-8 BOM
+        if (content.charCodeAt(0) === 0xFEFF) {
+            content = content.substring(1);
+        }
+        // 尝试修复 GBK 乱码（简单替换常见乱码字符）
+        content = fixGarbledText(content);
+        
         const lines = content.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+        if (lines.length === 0) {
+            showToast('文件内容为空', 'error');
+            return;
+        }
 
-        // 解析名单：支持 CSV（逗号分隔）和纯文本（每行一个姓名）
+        // 解析表头
+        const headerLine = lines[0];
+        const headers = parseCSVLine(headerLine);
+        
+        // 判断是否是考勤表（有日期列）还是纯名单
+        const isAttendanceSheet = headers.length > 1 && headers.some(h => /^\d{1,2}[-\/]\d{1,2}/.test(h));
+        
         const newStudents = [];
-        lines.forEach((line, idx) => {
-            const names = line.includes(',') ? line.split(',').map(n => n.trim()) : [line];
-            names.forEach(name => {
-                if (name && name !== '姓名' && name !== 'name' && name !== '学生') {
-                    newStudents.push({
-                        id: 's' + Date.now() + '_' + idx,
-                        name: name,
-                        avatar: name.charAt(0)
-                    });
+        const importedAttendance = {}; // date -> {studentId -> status}
+        
+        if (isAttendanceSheet) {
+            // 考勤表格式：姓名,日期1,日期2,...
+            const dateHeaders = headers.slice(1);
+            
+            for (let i = 1; i < lines.length; i++) {
+                const cells = parseCSVLine(lines[i]);
+                if (cells.length === 0) continue;
+                
+                const name = cells[0].trim();
+                if (!name || name === '姓名' || name === '学生') continue;
+                
+                const studentId = 's' + Date.now() + '_' + i;
+                newStudents.push({
+                    id: studentId,
+                    name: name,
+                    avatar: name.charAt(0)
+                });
+                
+                // 解析考勤标记
+                for (let j = 1; j < cells.length && j <= dateHeaders.length; j++) {
+                    const dateKey = normalizeDate(dateHeaders[j - 1]);
+                    const mark = cells[j].trim();
+                    const status = parseAttendanceMark(mark);
+                    
+                    if (status) {
+                        if (!importedAttendance[dateKey]) importedAttendance[dateKey] = {};
+                        importedAttendance[dateKey][studentId] = status;
+                    }
                 }
+            }
+        } else {
+            // 纯名单格式：每行一个姓名
+            lines.forEach((line, idx) => {
+                const names = line.includes(',') ? line.split(',').map(n => n.trim()) : [line];
+                names.forEach(name => {
+                    if (name && name !== '姓名' && name !== 'name' && name !== '学生') {
+                        newStudents.push({
+                            id: 's' + Date.now() + '_' + idx,
+                            name: name,
+                            avatar: name.charAt(0)
+                        });
+                    }
+                });
             });
-        });
+        }
 
         if (newStudents.length === 0) {
             showToast('未能从文件中解析到学生姓名，请检查文件格式', 'error');
@@ -3083,6 +3190,13 @@ function handleRosterUpload(event) {
         }
         students.length = 0;
         newStudents.forEach(s => students.push(s));
+        
+        // 合并导入的考勤数据
+        Object.keys(importedAttendance).forEach(date => {
+            if (!attendanceData[date]) attendanceData[date] = {};
+            Object.assign(attendanceData[date], importedAttendance[date]);
+        });
+        saveCurrentClassData();
 
         // 更新上传信息展示
         document.getElementById('rosterFileName').textContent = file.name;
@@ -3093,37 +3207,207 @@ function handleRosterUpload(event) {
         renderTodayCheckin();
         renderDashboardCheckin();
         renderPersonalStats();
+        renderAttendanceMatrix(); // 刷新考勤矩阵
         updateStats();
 
-        showToast(`成功导入 ${students.length} 名学生`, 'success');
+        const msg = isAttendanceSheet 
+            ? `成功导入 ${students.length} 名学生及考勤记录` 
+            : `成功导入 ${students.length} 名学生`;
+        showToast(msg, 'success');
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
 }
 
-// 导出出勤统计
-function exportAttendanceStats() {
-    const dates = Object.keys(attendanceData);
-    let csv = '学生姓名,出勤次数,迟到次数,缺勤次数,出勤率\n';
+// 修复乱码文本
+function fixGarbledText(text) {
+    // 常见 GBK->UTF8 乱码替换
+    const fixes = {
+        '\\u00E2\\u20AC\\u201C': '“', '\\u00E2\\u20AC\\u201D': '”',
+        '\\u00E2\\u20AC\\u02DC': '～', '\\u00E2\\u20AC\\u2122': ''',
+        '\\u00C3\\u2014': '—', '\\u00C2\\u00B7': '·',
+        '\\u00E3\\u0080\\u0081': '、', '\\u00EF\\u00BC\\u008C': '，',
+        '\\u00EF\\u00BC\\u009B': '【', '\\u00EF\\u00BC\\u009D': '】',
+        '\\u00EF\\u00BC\\u0088': '（', '\\u00EF\\u00BC\\u0089': '）',
+        '\\u00EF\\u00BC\\u009A': '：', '\\u00EF\\u00BC\\u009B': '；',
+        '\\u00EF\\u00BC\\u009F': '？', '\\u00EF\\u00BC\\u0081': '！'
+    };
+    
+    let result = text;
+    Object.keys(fixes).forEach(garbled => {
+        const regex = new RegExp(garbled.replace(/\\u/g, '\\u'), 'g');
+        result = result.replace(regex, fixes[garbled]);
+    });
+    
+    return result;
+}
 
+// 解析 CSV 行（处理引号）
+function parseCSVLine(line) {
+    const cells = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            cells.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    cells.push(current.trim());
+    return cells;
+}
+
+// 标准化日期格式
+function normalizeDate(dateStr) {
+    // 支持 6-20, 06-20, 2026-06-20 等格式
+    const match = dateStr.match(/(\d{1,2})[-\/](\d{1,2})/);
+    if (match) {
+        const month = match[1].padStart(2, '0');
+        const day = match[2].padStart(2, '0');
+        const year = new Date().getFullYear();
+        return `${year}-${month}-${day}`;
+    }
+    return dateStr;
+}
+
+// 解析考勤标记
+function parseAttendanceMark(mark) {
+    if (!mark) return null;
+    const m = mark.trim();
+    // √ ✓ ✔ 出勤
+    if (/^[√✓✔vV]+$/.test(m)) return 'present';
+    // ○ ◯ 〇 迟到
+    if (/^[○◯〇oO0]$/.test(m)) return 'late';
+    // × ✕ ✖ 缺勤
+    if (/^[×✕✖xX]$/.test(m)) return 'absent';
+    // 文字匹配
+    if (m === '出勤' || m === '到' || m === '正常') return 'present';
+    if (m === '迟到' || m === '晚') return 'late';
+    if (m === '缺勤' || m === '未到' || m === '旷课') return 'absent';
+    return null;
+}
+
+// 渲染考勤矩阵表格（支持编辑）
+function renderAttendanceMatrix() {
+    const container = document.getElementById('attendanceMatrixContainer');
+    if (!container) return;
+    
+    const dates = Object.keys(attendanceData).sort();
+    if (dates.length === 0 || students.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无考勤记录，请导入考勤表或开始签到</div>';
+        return;
+    }
+    
+    // 构建表格
+    let html = '<div style="overflow-x:auto;"><table class="data-table attendance-matrix">';
+    
+    // 表头
+    html += '<thead><tr><th style="min-width:100px;">学生</th>';
+    dates.forEach(date => {
+        const display = date.substring(5); // MM-DD
+        html += `<th style="min-width:60px; text-align:center;">${display}</th>`;
+    });
+    html += '<th style="min-width:80px;">出勤率</th></tr></thead>';
+    
+    // 表格体
+    html += '<tbody>';
     students.forEach(s => {
-        let present = 0, late = 0, absent = 0;
+        let present = 0, late = 0, absent = 0, total = 0;
+        
+        html += `<tr><td style="font-weight:500;">${s.name}</td>`;
+        
         dates.forEach(date => {
             const status = attendanceData[date][s.id];
-            if (status === 'present') present++;
-            else if (status === 'late') late++;
-            else if (status === 'absent') absent++;
+            let mark = '';
+            let cellClass = '';
+            
+            if (status === 'present') { mark = '√'; cellClass = 'status-present'; present++; total++; }
+            else if (status === 'late') { mark = '○'; cellClass = 'status-late'; late++; total++; }
+            else if (status === 'absent') { mark = '×'; cellClass = 'status-absent'; absent++; total++; }
+            else { mark = '-'; cellClass = 'status-none'; }
+            
+            html += `<td class="attendance-cell ${cellClass}" 
+                        onclick="editAttendanceCell('${s.id}', '${date}')" 
+                        style="text-align:center; cursor:pointer; font-size:1.1rem; font-weight:600;">${mark}</td>`;
         });
-        const total = dates.length || 1;
-        const rate = Math.round((present / total) * 100);
-        csv += `${s.name},${present},${late},${absent},${rate}%\n`;
+        
+        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+        html += `<td><span class="badge ${rate >= 90 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger'}">${rate}%</span></td>`;
+        html += '</tr>';
     });
+    
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
 
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+// 编辑考勤单元格
+function editAttendanceCell(studentId, date) {
+    const currentStatus = attendanceData[date] ? attendanceData[date][studentId] : null;
+    
+    // 循环切换状态：null -> present -> late -> absent -> null
+    let newStatus = null;
+    if (currentStatus === null || currentStatus === undefined) newStatus = 'present';
+    else if (currentStatus === 'present') newStatus = 'late';
+    else if (currentStatus === 'late') newStatus = 'absent';
+    else if (currentStatus === 'absent') newStatus = null;
+    
+    if (!attendanceData[date]) attendanceData[date] = {};
+    if (newStatus === null) {
+        delete attendanceData[date][studentId];
+    } else {
+        attendanceData[date][studentId] = newStatus;
+    }
+    
+    saveCurrentClassData();
+    renderAttendanceMatrix();
+    renderPersonalStats();
+    updateStats();
+    
+    const statusText = newStatus === 'present' ? '出勤' : newStatus === 'late' ? '迟到' : newStatus === 'absent' ? '缺勤' : '未签到';
+    showToast(`已更新为：${statusText}`, 'success');
+}
+
+// 导出考勤统计 - 输出与导入格式一致的考勤表
+function exportAttendanceStats() {
+    const dates = Object.keys(attendanceData).sort();
+    
+    if (dates.length === 0 || students.length === 0) {
+        showToast('暂无考勤数据可导出', 'error');
+        return;
+    }
+    
+    // 构建与导入格式一致的 CSV
+    let csv = '\uFEFF'; // UTF-8 BOM
+    
+    // 表头：姓名,日期1,日期2,...
+    const displayDates = dates.map(d => d.substring(5)); // MM-DD
+    csv += '姓名,' + displayDates.join(',') + '\n';
+    
+    // 数据行
+    students.forEach(s => {
+        csv += s.name;
+        dates.forEach(date => {
+            const status = attendanceData[date][s.id];
+            let mark = '';
+            if (status === 'present') mark = '√';
+            else if (status === 'late') mark = '○';
+            else if (status === 'absent') mark = '×';
+            csv += ',' + mark;
+        });
+        csv += '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `出勤统计_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `考勤表_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    showToast('统计报表已导出', 'success');
+    showToast('考勤表已导出（√出勤 ○迟到 ×缺勤）', 'success');
 }
 
 // 点名功能
