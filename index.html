@@ -2735,7 +2735,10 @@ function selectRole(role) {
         const btn = container.querySelector(`[data-role="${role}"]`);
         if (btn) btn.classList.add('active');
     }
-    document.getElementById('classSelectGroup').style.display = role === 'student' ? 'block' : 'none';
+    const classSelectGroup = document.getElementById('classSelectGroup');
+    if (classSelectGroup) {
+        classSelectGroup.style.display = role === 'student' ? 'block' : 'none';
+    }
 }
 
 function handleLogin(e) {
