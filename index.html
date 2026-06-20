@@ -2242,20 +2242,32 @@ let teacherCurrentClassId = localStorage.getItem('teacherCurrentClassId') || '';
 let studentJoinedClasses = JSON.parse(localStorage.getItem('studentJoinedClasses')) || [];
 let studentCurrentClassId = localStorage.getItem('studentCurrentClassId') || '';
 
-// 自动清理乱码学生数据（检测XML标签残留）
+// 自动清理乱码学生数据（检测XML/CSS/代码残留）
 function cleanGarbledStudentData() {
     let cleaned = false;
     classData.forEach(cls => {
         if (!cls.students) return;
         const before = cls.students.length;
         cls.students = cls.students.filter(s => {
-            // 过滤包含XML标签、命名空间等乱码的姓名
-            if (!s.name || s.name.startsWith('<') || s.name.includes('xmlns') || 
-                s.name.includes('schemas-microsoft') || s.name.includes('html') ||
-                s.name.includes('xml') || s.name.includes('office:') ||
-                s.name.includes('urn:') || s.name.includes('http://') ||
-                s.name.includes('REC-') || s.name.includes('stylesheet') ||
-                s.name.length > 20) {
+            const n = s.name || '';
+            // 过滤包含XML标签、命名空间、CSS代码等乱码的姓名
+            if (!n || n.startsWith('<') || n.includes('xmlns') || 
+                n.includes('schemas-microsoft') || n.includes('html') ||
+                n.includes('xml') || n.includes('office:') ||
+                n.includes('urn:') || n.includes('http://') ||
+                n.includes('REC-') || n.includes('stylesheet') ||
+                // CSS相关
+                n.includes('table') && n.includes('{') ||
+                n.includes('@page') || n.includes('.font') ||
+                n.includes('font-size') || n.includes('color:') ||
+                n.includes('windowtext') || n.includes('10.0pt') ||
+                n.includes('mso-') || n.includes('style=') ||
+                // 代码特征
+                n.includes('{') && n.includes('}') ||
+                n.includes('/*') || n.includes('*/') ||
+                n.startsWith('.') && n.includes('{') ||
+                n.startsWith('#') && n.includes('{') ||
+                n.length > 20 || n.length < 2) {
                 return false;
             }
             return true;
@@ -3164,6 +3176,28 @@ function handleRosterUpload(event) {
         const newStudents = [];
         const importedAttendance = {}; // date -> {studentId -> status}
         
+        // 通用：判断是否为有效学生姓名
+        function isValidStudentName(name) {
+            if (!name || name.length < 2 || name.length > 20) return false;
+            // 过滤XML/CSS/代码特征
+            if (name.startsWith('<?xml') || name.startsWith('<') || name.startsWith('.') || name.startsWith('#') ||
+                name.startsWith('@') || name.startsWith('{') || name.startsWith('}') ||
+                name.startsWith('/*') || name.startsWith('*/') ||
+                name.includes('xmlns') || name.includes('schemas-microsoft') ||
+                name.includes('html') || name.includes('xml') || name.includes('office:') ||
+                name.includes('urn:') || name.includes('http://') || name.includes('REC-') ||
+                name.includes('stylesheet') || name.includes('font-size') ||
+                name.includes('color:') || name.includes('windowtext') ||
+                name.includes('10.0pt') || name.includes('mso-') || name.includes('style=') ||
+                name.includes('@page') || name.includes('.font') ||
+                (name.includes('{') && name.includes('}')) ||
+                (name.includes('/*') && name.includes('*/'))) return false;
+            // 清理XML标签残留
+            name = name.replace(/<[^>]+>/g, '').trim();
+            if (!name || name.length < 2) return false;
+            return name;
+        }
+
         if (isAttendanceSheet) {
             // 考勤表格式：姓名,日期1,日期2,...
             const dateHeaders = headers.slice(1);
@@ -3172,12 +3206,8 @@ function handleRosterUpload(event) {
                 const cells = parseCSVLine(lines[i]);
                 if (cells.length === 0) continue;
                 
-                let name = cells[0].trim();
-                // 过滤掉XML标签和空内容
-                if (!name || name.startsWith('<?xml') || name.startsWith('<') || name === '姓名' || name === '学生') continue;
-                // 清理可能的XML残留
-                name = name.replace(/<[^>]+>/g, '').trim();
-                if (!name) continue;
+                let name = isValidStudentName(cells[0].trim());
+                if (!name || name === '姓名' || name === '学生') continue;
                 
                 const studentId = 's' + Date.now() + '_' + i;
                 newStudents.push({
@@ -3203,10 +3233,8 @@ function handleRosterUpload(event) {
             lines.forEach((line, idx) => {
                 const names = line.includes(',') ? line.split(',').map(n => n.trim()) : [line];
                 names.forEach(name => {
-                    // 过滤掉XML标签和无效内容
-                    if (!name || name.startsWith('<?xml') || name.startsWith('<') || name === '姓名' || name === 'name' || name === '学生') return;
-                    name = name.replace(/<[^>]+>/g, '').trim();
-                    if (!name) return;
+                    name = isValidStudentName(name);
+                    if (!name || name === '姓名' || name === 'name' || name === '学生') return;
                     
                     newStudents.push({
                         id: 's' + Date.now() + '_' + idx,
