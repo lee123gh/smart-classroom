@@ -2237,10 +2237,10 @@ const defaultStudents = [
 ];
 
 // 班级管理系统
-let classData = JSON.parse(localStorage.getItem('classData')) || [];
-let teacherCurrentClassId = localStorage.getItem('teacherCurrentClassId') || '';
-let studentJoinedClasses = JSON.parse(localStorage.getItem('studentJoinedClasses')) || [];
-let studentCurrentClassId = localStorage.getItem('studentCurrentClassId') || '';
+var classData = JSON.parse(localStorage.getItem('classData')) || [];
+var teacherCurrentClassId = localStorage.getItem('teacherCurrentClassId') || '';
+var studentJoinedClasses = JSON.parse(localStorage.getItem('studentJoinedClasses')) || [];
+var studentCurrentClassId = localStorage.getItem('studentCurrentClassId') || '';
 
 // 自动清理乱码学生数据（检测XML/CSS/代码残留）
 function cleanGarbledStudentData() {
@@ -2291,7 +2291,7 @@ function getCurrentClassStudents() {
 }
 
 // 兼容：students 变量指向当前班级学生
-let students = getCurrentClassStudents();
+var students = getCurrentClassStudents();
 
 // 按班级隔离的数据读写
 function getClassDataKey(key) {
@@ -2319,33 +2319,33 @@ function loadStudentClassIsolatedData(key, fallback) {
     return JSON.parse(localStorage.getItem(getStudentClassDataKey(key))) || fallback;
 }
 
-let currentUser = null;
+var currentUser = null;
 var currentRole = 'teacher';
-let checkinCode = null;
-let checkinTimer = null;
-let checkinTimeLeft = 300;
-let rollCallInterval = null;
-let currentGradeSubmission = null;
-let currentSubmitHomework = null;
-let learningInterval = null;
-let learningSeconds = 0;
-let isLearning = false;
+var checkinCode = null;
+var checkinTimer = null;
+var checkinTimeLeft = 300;
+var rollCallInterval = null;
+var currentGradeSubmission = null;
+var currentSubmitHomework = null;
+var learningInterval = null;
+var learningSeconds = 0;
+var isLearning = false;
 
 // 初始化数据（按班级隔离）
-let attendanceData = loadClassIsolatedData('attendanceData', {});
-let homeworkData = loadClassIsolatedData('homeworkData', [
+var attendanceData = loadClassIsolatedData('attendanceData', {});
+var homeworkData = loadClassIsolatedData('homeworkData', [
     { id: 'hw1', title: '数据结构作业一：线性表', desc: '实现单链表的基本操作，包括插入、删除、查找等。', deadline: '2026-06-25T23:59', createdAt: '2026-06-15', submissions: {} },
     { id: 'hw2', title: '算法设计：排序算法比较', desc: '比较各种排序算法的时间复杂度，并给出实际测试数据。', deadline: '2026-06-28T23:59', createdAt: '2026-06-17', submissions: {} },
     { id: 'hw3', title: '数据库设计作业', desc: '设计一个学生信息管理系统的数据库结构。', deadline: '2026-07-02T23:59', createdAt: '2026-06-19', submissions: {} }
 ]);
-let rollCallHistory = loadClassIsolatedData('rollCallHistory', []);
-let monitorData = {};
+var rollCallHistory = loadClassIsolatedData('rollCallHistory', []);
+var monitorData = {};
 
 // 视频数据与观看进度（按班级隔离）
-let videoData = loadClassIsolatedData('videoData', []);
-let videoProgressData = loadClassIsolatedData('videoProgressData', {});
-let selectedVideoFile = null;
-let currentPlayingVideoId = null;
+var videoData = loadClassIsolatedData('videoData', []);
+var videoProgressData = loadClassIsolatedData('videoProgressData', {});
+var selectedVideoFile = null;
+var currentPlayingVideoId = null;
 
 // 初始化默认视频（仅首次，当前班级无视频时）
 if (videoData.length === 0) {
@@ -2704,7 +2704,7 @@ if (storedAuthVersion !== AUTH_VERSION) {
     localStorage.removeItem('registeredUsers');
     localStorage.setItem('authVersion', AUTH_VERSION);
 }
-let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
+var registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
 
 function switchAuthTab(tab) {
     document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
@@ -2713,7 +2713,7 @@ function switchAuthTab(tab) {
     document.getElementById('registerFormArea').style.display = tab === 'register' ? 'block' : 'none';
 }
 
-let regRole = 'student';
+var regRole = 'student';
 function selectRegRole(role) {
     regRole = role;
     const container = document.getElementById('registerFormArea');
@@ -2752,15 +2752,15 @@ function selectRole(role) {
 
 function handleLogin(e) {
     e.preventDefault();
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value;
     if (!username || !password) {
         showToast('请输入用户名和密码', 'error');
         return;
     }
 
     // 必须注册后才能登录
-    const regUser = registeredUsers.find(u => u.name === username || u.id === username);
+    var regUser = registeredUsers.find(function(u) { return u.name === username || u.id === username; });
     if (!regUser) {
         showToast('用户不存在，请先注册', 'error');
         return;
@@ -2774,8 +2774,8 @@ function handleLogin(e) {
 
     // 校验角色：注册为教师只能登录教师端，注册为学生只能登录学生端
     if (regUser.role && regUser.role !== currentRole) {
-        const expectedRoleText = regUser.role === 'teacher' ? '教师端' : '学生端';
-        showToast(`该账号注册为${regUser.role === 'teacher' ? '教师' : '学生'}，请在${expectedRoleText}登录`, 'error');
+        var expectedRoleText = regUser.role === 'teacher' ? '教师端' : '学生端';
+        showToast('该账号注册为' + (regUser.role === 'teacher' ? '教师' : '学生') + '，请在' + expectedRoleText + '登录', 'error');
         return;
     }
 
@@ -2785,7 +2785,8 @@ function handleLogin(e) {
         document.getElementById('loginPage').style.display = 'none';
         document.getElementById('teacherApp').classList.add('active');
         // 更新所有教师名显示
-        document.querySelectorAll('[id^="teacherName"]').forEach(el => el.textContent = currentUser.name);
+        var teacherNameEls = document.querySelectorAll('[id^="teacherName"]');
+        for (var i = 0; i < teacherNameEls.length; i++) { teacherNameEls[i].textContent = currentUser.name; }
         document.querySelector('#teacherApp .user-avatar').textContent = currentUser.name[0];
         // 初始化班级选择器
         students = getCurrentClassStudents();
@@ -2796,7 +2797,8 @@ function handleLogin(e) {
         document.getElementById('loginPage').style.display = 'none';
         document.getElementById('studentApp').classList.add('active');
         // 更新所有学生名显示
-        document.querySelectorAll('[id^="studentNameDisplay"]').forEach(el => el.textContent = currentUser.name);
+        var studentNameEls = document.querySelectorAll('[id^="studentNameDisplay"]');
+        for (var i = 0; i < studentNameEls.length; i++) { studentNameEls[i].textContent = currentUser.name; }
         document.querySelector('#studentApp .user-avatar').textContent = currentUser.name[0];
         // 初始化学生端班级选择器
         if (studentJoinedClasses.length > 0 && !studentCurrentClassId) {
@@ -2804,7 +2806,7 @@ function handleLogin(e) {
             localStorage.setItem('studentCurrentClassId', studentCurrentClassId);
         }
         if (studentCurrentClassId) {
-            const cls = classData.find(c => c.id === studentCurrentClassId);
+            var cls = classData.find(function(c) { return c.id === studentCurrentClassId; });
             students = cls ? cls.students : defaultStudents;
             attendanceData = loadStudentClassIsolatedData('attendanceData', {});
             homeworkData = loadStudentClassIsolatedData('homeworkData', []);
@@ -2820,12 +2822,12 @@ function handleLogin(e) {
 function handleRegister(e) {
     e.preventDefault();
     const name = document.getElementById('regName').value.trim();
-    const id = document.getElementById('regId').value.trim();
-    const phone = document.getElementById('regPhone').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const passwordConfirm = document.getElementById('regPasswordConfirm').value;
-    const className = document.getElementById('regClass');
-    const classText = className.options[className.selectedIndex].text;
+    var id = document.getElementById('regId').value.trim();
+    var phone = document.getElementById('regPhone').value.trim();
+    var password = document.getElementById('regPassword').value;
+    var passwordConfirm = document.getElementById('regPasswordConfirm').value;
+    var className = document.getElementById('regClass');
+    var classText = className.options[className.selectedIndex].text;
 
     if (!name || !id || !phone || !password) {
         showToast('请填写完整信息', 'error');
@@ -2847,13 +2849,13 @@ function handleRegister(e) {
         return;
     }
 
-    if (registeredUsers.find(u => u.id === id)) {
+    if (registeredUsers.find(function(u) { return u.id === id; })) {
         showToast('该学号/工号已注册', 'error');
         return;
     }
 
-    const newUser = {
-        name, id, phone, password,
+    var newUser = {
+        name: name, id: id, phone: phone, password: password,
         role: regRole,
         class: regRole === 'student' ? classText : null,
         classId: regRole === 'student' ? className.value : null,
@@ -2864,7 +2866,7 @@ function handleRegister(e) {
 
     // 学生注册时自动添加到默认班级
     if (regRole === 'student') {
-        const newStudent = { id: 's' + Date.now(), name: name, avatar: name.charAt(0) };
+        var newStudent = { id: 's' + Date.now(), name: name, avatar: name.charAt(0) };
         if (classData.length > 0) {
             classData[0].students.push(newStudent);
             localStorage.setItem('classData', JSON.stringify(classData));
@@ -2879,12 +2881,14 @@ function handleRegister(e) {
     document.getElementById('username').value = id;
     document.getElementById('password').value = '';
     currentRole = regRole;
-    document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-role="${regRole}"]`).classList.add('active');
-    document.getElementById('classSelectGroup').style.display = regRole === 'student' ? 'block' : 'none';
-    document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector('[data-role="student"]').classList.add('active');
-    document.getElementById('classSelectGroup').style.display = 'block';
+    var allRoleBtns = document.querySelectorAll('.role-btn');
+    for (var i = 0; i < allRoleBtns.length; i++) { allRoleBtns[i].classList.remove('active'); }
+    var targetBtn = document.querySelector('[data-role="' + regRole + '"]');
+    if (targetBtn) targetBtn.classList.add('active');
+    var classSelectGroup = document.getElementById('classSelectGroup');
+    if (classSelectGroup) {
+        classSelectGroup.style.display = regRole === 'student' ? 'block' : 'none';
+    }
 
     // 清空注册表单
     document.getElementById('regName').value = '';
