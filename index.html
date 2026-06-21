@@ -2267,7 +2267,7 @@ if (classData.length === 0) {
         name: '默认班级',
         code: 'CLASS01',
         teacherName: '张教授',
-        students: defaultStudents.map(function(s) { return ({...s}; })),
+        students: defaultStudents.map(function(s) { return {id: s.id, name: s.name, avatar: s.avatar}; }),
         createdAt: new Date().toISOString().split('T')[0]
     }];
     localStorage.setItem('classData', JSON.stringify(classData));
@@ -2520,7 +2520,7 @@ function saveCurrentClassData() {
     saveClassIsolatedData('attendanceData', attendanceData);
     saveClassIsolatedData('homeworkData', homeworkData);
     saveClassIsolatedData('rollCallHistory', rollCallHistory);
-    saveClassIsolatedData('videoData', videoData.map(function(v) { return ({...v, url: ''}; })));
+    saveClassIsolatedData('videoData', videoData.map(function(v) { var copy = {}; for (var k in v) { copy[k] = v[k]; } copy.url = ''; return copy; }));
     saveClassIsolatedData('videoProgressData', videoProgressData);
 }
 
@@ -4352,7 +4352,7 @@ function uploadVideo() {
         tempVideo.onloadedmetadata = function() {
             newVideo.duration = Math.floor(tempVideo.duration);
             videoData.push(newVideo);
-            saveClassIsolatedData('videoData', videoData.map(function(v) { return ({...v, url: ''}; }))); // 不存blob URL
+            saveClassIsolatedData('videoData', videoData.map(function(v) { var copy = {}; for (var k in v) { copy[k] = v[k]; } copy.url = ''; return copy; })); // 不存blob URL
             hideModal('uploadVideoModal');
             renderMonitorPage();
             showToast('视频发布成功！', 'success');
