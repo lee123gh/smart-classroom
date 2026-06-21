@@ -2214,7 +2214,7 @@
 
 <script>
 // ===== 数据层 =====
-const defaultStudents = [
+var defaultStudents = [
     { id: 's1', name: '李明', avatar: '李' },
     { id: 's2', name: '王芳', avatar: '王' },
     { id: 's3', name: '张伟', avatar: '张' },
@@ -2245,11 +2245,11 @@ var studentCurrentClassId = localStorage.getItem('studentCurrentClassId') || '';
 
 // 自动清理乱码学生数据（检测XML/CSS/代码残留）
 function cleanGarbledStudentData() {
-    let cleaned = false;
-    classData.forEach(cls => {
+    var cleaned = false;
+    classData.forEach(function(cls) {
         if (!cls.students) return;
-        const before = cls.students.length;
-        cls.students = cls.students.filter(s => {
+        var before = cls.students.length;
+        cls.students = cls.students.filter(function(s) {
             return isValidStudentName(s.name || '');
         });
         if (cls.students.length !== before) cleaned = true;
@@ -2267,7 +2267,7 @@ if (classData.length === 0) {
         name: '默认班级',
         code: 'CLASS01',
         teacherName: '张教授',
-        students: defaultStudents.map(s => ({...s})),
+        students: defaultStudents.map(function(s) { return ({...s}; })),
         createdAt: new Date().toISOString().split('T')[0]
     }];
     localStorage.setItem('classData', JSON.stringify(classData));
@@ -2276,7 +2276,7 @@ if (classData.length === 0) {
 }
 
 // 确保当前班级ID有效
-if (teacherCurrentClassId && !classData.find(c => c.id === teacherCurrentClassId)) {
+if (teacherCurrentClassId && !classData.find(function(c) { return c.id === teacherCurrentClassId; })) {
     teacherCurrentClassId = classData[0] ? classData[0].id : '';
     localStorage.setItem('teacherCurrentClassId', teacherCurrentClassId);
 }
@@ -2287,7 +2287,7 @@ if (!teacherCurrentClassId && classData.length > 0) {
 
 // 兼容：获取当前班级的学生列表
 function getCurrentClassStudents() {
-    const cls = classData.find(c => c.id === teacherCurrentClassId);
+    var cls = classData.find(function(c) { return c.id === teacherCurrentClassId; });
     return cls ? cls.students : defaultStudents;
 }
 
@@ -2357,10 +2357,10 @@ if (videoData.length === 0) {
         { id: 'v4', title: '计算机网络 - TCP/IP协议栈', desc: 'TCP三次握手、UDP、IP路由', duration: 2400, uploadedAt: '2026-06-19', url: '' }
     ];
     // 模拟部分学生的观看进度
-    students.forEach(s => {
+    students.forEach(function(s) {
         videoProgressData[s.id] = {};
-        videoData.forEach(v => {
-            const rand = Math.random();
+        videoData.forEach(function(v) {
+            var rand = Math.random();
             if (rand > 0.3) {
                 videoProgressData[s.id][v.id] = {
                     watched: Math.floor(v.duration * (0.2 + Math.random() * 0.8)),
@@ -2376,24 +2376,24 @@ if (videoData.length === 0) {
 
 // ===== 班级管理功能 =====
 function generateClassCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    var code = '';
+    for (var i = 0; i < 6; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     // 确保不重复
-    if (classData.find(c => c.code === code)) return generateClassCode();
+    if (classData.find(function(c) { return c.code === code; })) return generateClassCode();
     return code;
 }
 
 function createNewClass() {
-    const name = document.getElementById('newClassName').value.trim();
-    const teacherName = document.getElementById('newClassTeacher').value.trim();
+    var name = document.getElementById('newClassName').value.trim();
+    var teacherName = document.getElementById('newClassTeacher').value.trim();
     if (!name) {
         showToast('请输入班级名称', 'error');
         return;
     }
-    const newClass = {
+    var newClass = {
         id: 'class_' + Date.now(),
         name: name,
         code: generateClassCode(),
@@ -2405,7 +2405,7 @@ function createNewClass() {
     localStorage.setItem('classData', JSON.stringify(classData));
 
     // 初始化该班级的数据
-    const prevClassId = teacherCurrentClassId;
+    var prevClassId = teacherCurrentClassId;
     teacherCurrentClassId = newClass.id;
     localStorage.setItem('teacherCurrentClassId', teacherCurrentClassId);
     saveClassIsolatedData('attendanceData', {});
@@ -2424,7 +2424,7 @@ function createNewClass() {
 }
 
 function deleteClass(classId) {
-    const cls = classData.find(c => c.id === classId);
+    var cls = classData.find(function(c) { return c.id === classId; });
     if (!cls) return;
     if (classData.length <= 1) {
         showToast('至少保留一个班级', 'warning');
@@ -2432,16 +2432,16 @@ function deleteClass(classId) {
     }
     if (!confirm('确定删除班级 "' + cls.name + '" 吗？删除后不可恢复。')) return;
 
-    classData = classData.filter(c => c.id !== classId);
+    classData = classData.filter(function(c) { return c.id !== classId; });
     localStorage.setItem('classData', JSON.stringify(classData));
 
     // 清理该班级的隔离数据
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+    var keysToRemove = [];
+    for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
         if (key && key.endsWith('_' + classId)) keysToRemove.push(key);
     }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
+    keysToRemove.forEach(function(k) { localStorage.removeItem(k; }));
 
     if (teacherCurrentClassId === classId) {
         switchTeacherClass(classData[0].id);
@@ -2451,13 +2451,13 @@ function deleteClass(classId) {
 }
 
 function viewClassCode(classId) {
-    const cls = classData.find(c => c.id === classId);
+    var cls = classData.find(function(c) { return c.id === classId; });
     if (!cls) return;
 
     document.getElementById('viewClassCodeName').textContent = cls.name;
     document.getElementById('viewClassCodeText').textContent = cls.code;
 
-    const qrContainer = document.getElementById('viewClassCodeQR');
+    var qrContainer = document.getElementById('viewClassCodeQR');
     qrContainer.innerHTML = '';
     new QRCode(qrContainer, {
         text: cls.code,
@@ -2475,13 +2475,13 @@ function enterTeacherClass(classId) {
     switchTeacherClass(classId);
     showPage('teacherDashboard');
     // 更新侧边栏active状态
-    document.querySelectorAll('#teacherApp .sidebar-nav .nav-item').forEach((item, i) => {
+    document.querySelectorAll('#teacherApp .sidebar-nav .nav-item').forEach(function(item, i) {
         item.classList.toggle('active', i === 1); // 总览看板是第二个
     });
 }
 
 function switchTeacherClass(classId) {
-    if (!classId || !classData.find(c => c.id === classId)) return;
+    if (!classId || !classData.find(function(c) { return c.id === classId; })) return;
 
     // 保存当前班级数据
     saveCurrentClassData();
@@ -2520,64 +2520,64 @@ function saveCurrentClassData() {
     saveClassIsolatedData('attendanceData', attendanceData);
     saveClassIsolatedData('homeworkData', homeworkData);
     saveClassIsolatedData('rollCallHistory', rollCallHistory);
-    saveClassIsolatedData('videoData', videoData.map(v => ({...v, url: ''})));
+    saveClassIsolatedData('videoData', videoData.map(function(v) { return ({...v, url: ''}; })));
     saveClassIsolatedData('videoProgressData', videoProgressData);
 }
 
 function updateAllTeacherClassSelectors() {
-    const selectors = document.querySelectorAll('[id^="teacherClassSelector"]');
-    selectors.forEach(sel => {
-        const currentVal = sel.value;
-        sel.innerHTML = classData.map(c =>
-            `<option value="${c.id}" ${c.id === teacherCurrentClassId ? 'selected' : ''}>${c.name}</option>`
-        ).join('');
+    var selectors = document.querySelectorAll('[id^="teacherClassSelector"]');
+    selectors.forEach(function(sel) {
+        var currentVal = sel.value;
+        sel.innerHTML = classData.map(function(c) {
+            return '<option value="' + c.id + '" ' + (c.id === teacherCurrentClassId ? 'selected' : '') + '>' + c.name + '</option>';
+        }).join('');
     });
 }
 
 function renderTeacherClassPage() {
-    const grid = document.getElementById('teacherClassGrid');
+    var grid = document.getElementById('teacherClassGrid');
     if (!grid) return;
 
-    grid.innerHTML = classData.map(cls => `
-        <div class="class-card">
-            <div class="class-card-header">
-                <div class="class-card-title">${cls.name}</div>
-                <div class="class-card-code">${cls.code}</div>
-            </div>
-            <div class="class-card-meta">
-                <span>
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    ${cls.students.length} 名学生
-                </span>
-                <span>
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    ${cls.createdAt}
-                </span>
-            </div>
-            <div class="class-card-actions">
-                <button class="btn btn-info btn-sm" onclick="viewClassCode('${cls.id}')">查看班级码</button>
-                <button class="btn btn-success btn-sm" onclick="enterTeacherClass('${cls.id}')">进入课堂</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteClass('${cls.id}')">删除</button>
-            </div>
-        </div>
-    `).join('') || '<div class="empty-state"><p>暂无班级，请创建新班级</p></div>';
+    grid.innerHTML = classData.map(function(cls) {
+        return '<div class="class-card">' +
+            '<div class="class-card-header">' +
+                '<div class="class-card-title">' + cls.name + '</div>' +
+                '<div class="class-card-code">' + cls.code + '</div>' +
+            '</div>' +
+            '<div class="class-card-meta">' +
+                '<span>' +
+                    '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' +
+                    ' ' + cls.students.length + ' 名学生' +
+                '</span>' +
+                '<span>' +
+                    '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>' +
+                    ' ' + cls.createdAt +
+                '</span>' +
+            '</div>' +
+            '<div class="class-card-actions">' +
+                '<button class="btn btn-info btn-sm" onclick="viewClassCode(\'' + cls.id + '\')">查看班级码</button>' +
+                '<button class="btn btn-success btn-sm" onclick="enterTeacherClass(\'' + cls.id + '\')">进入课堂</button>' +
+                '<button class="btn btn-danger btn-sm" onclick="deleteClass(\'' + cls.id + '\')">删除</button>' +
+            '</div>' +
+        '</div>';
+    }).join('') || '<div class="empty-state"><p>暂无班级，请创建新班级</p></div>';
 }
 
 // ===== 学生端班级管理 =====
 function joinClassByCode() {
-    const code = document.getElementById('joinClassCodeInput').value.trim().toUpperCase();
+    var code = document.getElementById('joinClassCodeInput').value.trim().toUpperCase();
     if (!code || code.length !== 6) {
         showToast('请输入6位班级号', 'error');
         return;
     }
 
-    const cls = classData.find(c => c.code === code);
+    var cls = classData.find(function(c) { return c.code === code; });
     if (!cls) {
         showToast('班级号不存在，请检查后重试', 'error');
         return;
     }
 
-    if (studentJoinedClasses.find(c => c.classId === cls.id)) {
+    if (studentJoinedClasses.find(function(c) { return c.classId === cls.id; })) {
         showToast('你已经加入了该班级', 'warning');
         return;
     }
@@ -2592,7 +2592,7 @@ function joinClassByCode() {
 
     // 将学生添加到班级学生列表
     if (currentUser) {
-        const studentExists = cls.students.find(s => s.name === currentUser.name);
+        var studentExists = cls.students.find(function(s) { return s.name === currentUser.name; });
         if (!studentExists) {
             cls.students.push({
                 id: 's' + Date.now(),
@@ -2612,7 +2612,7 @@ function joinClassByCode() {
 function enterStudentClass(classId) {
     switchStudentClass(classId);
     showStudentPage('studentDashboard');
-    document.querySelectorAll('#studentApp .sidebar-nav .nav-item').forEach((item, i) => {
+    document.querySelectorAll('#studentApp .sidebar-nav .nav-item').forEach(function(item, i) {
         item.classList.toggle('active', i === 1); // 学习看板是第二个
     });
 }
@@ -2630,7 +2630,7 @@ function switchStudentClass(classId) {
     videoProgressData = loadStudentClassIsolatedData('videoProgressData', {});
 
     // 获取班级学生列表
-    const cls = classData.find(c => c.id === classId);
+    var cls = classData.find(function(c) { return c.id === classId; });
     students = cls ? cls.students : defaultStudents;
 
     // 更新所有学生端班级选择器
@@ -2642,45 +2642,45 @@ function switchStudentClass(classId) {
 }
 
 function updateAllStudentClassSelectors() {
-    const selectors = document.querySelectorAll('[id^="studentClassSelector"]');
-    selectors.forEach(sel => {
-        sel.innerHTML = studentJoinedClasses.map(c =>
-            `<option value="${c.classId}" ${c.classId === studentCurrentClassId ? 'selected' : ''}>${c.className}</option>`
-        ).join('');
+    var selectors = document.querySelectorAll('[id^="studentClassSelector"]');
+    selectors.forEach(function(sel) {
+        sel.innerHTML = studentJoinedClasses.map(function(c) {
+            return '<option value="' + c.classId + '" ' + (c.classId === studentCurrentClassId ? 'selected' : '') + '>' + c.className + '</option>';
+        }).join('');
     });
 }
 
 function renderStudentClassPage() {
-    const grid = document.getElementById('studentClassGrid');
+    var grid = document.getElementById('studentClassGrid');
     if (!grid) return;
 
-    grid.innerHTML = studentJoinedClasses.map(jc => {
-        const cls = classData.find(c => c.id === jc.classId);
-        return `
+    grid.innerHTML = studentJoinedClasses.map(function(jc) {
+        var cls = classData.find(function(c) { return c.id === jc.classId; });
+        return '
             <div class="class-card">
                 <div class="class-card-header">
-                    <div class="class-card-title">${jc.className}</div>
-                    <div class="class-card-code">${jc.classCode}</div>
+                    <div class="class-card-title">' + jc.className + '</div>
+                    <div class="class-card-code">' + jc.classCode + '</div>
                 </div>
                 <div class="class-card-meta">
                     <span>
                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        加入时间: ${jc.joinedAt}
+                        加入时间: ' + jc.joinedAt + '
                     </span>
-                    ${cls ? `<span>${cls.students.length} 名学生</span>` : ''}
+                    ${cls ? '<span>${cls.students.length} 名学生</span>' : ''}
                 </div>
                 <div class="class-card-actions">
-                    <button class="btn btn-success btn-sm" onclick="enterStudentClass('${jc.classId}')">进入课堂</button>
-                    <button class="btn btn-danger btn-sm" onclick="leaveClass('${jc.classId}')">退出班级</button>
+                    <button class="btn btn-success btn-sm" onclick="enterStudentClass('' + jc.classId + '')">进入课堂</button>
+                    <button class="btn btn-danger btn-sm" onclick="leaveClass('' + jc.classId + '')">退出班级</button>
                 </div>
             </div>
-        `;
+        ';
     }).join('') || '<div class="empty-state"><p>你还没有加入任何班级，请输入班级号加入</p></div>';
 }
 
 function leaveClass(classId) {
     if (!confirm('确定退出该班级吗？')) return;
-    studentJoinedClasses = studentJoinedClasses.filter(c => c.classId !== classId);
+    studentJoinedClasses = studentJoinedClasses.filter(function(c) { return c.classId !== classId; });
     localStorage.setItem('studentJoinedClasses', JSON.stringify(studentJoinedClasses));
 
     if (studentCurrentClassId === classId) {
@@ -2698,8 +2698,8 @@ function leaveClass(classId) {
 
 // ===== 登录相关 =====
 // 版本标记：用于强制刷新旧数据
-const AUTH_VERSION = 'v2';
-const storedAuthVersion = localStorage.getItem('authVersion');
+var AUTH_VERSION = 'v2';
+var storedAuthVersion = localStorage.getItem('authVersion');
 if (storedAuthVersion !== AUTH_VERSION) {
     // 清除旧版认证数据，强制重新注册
     localStorage.removeItem('registeredUsers');
@@ -2717,18 +2717,18 @@ function switchAuthTab(tab) {
 var regRole = 'student';
 function selectRegRole(role) {
     regRole = role;
-    const container = document.getElementById('registerFormArea');
+    var container = document.getElementById('registerFormArea');
     if (container) {
-        const buttons = container.querySelectorAll('[data-reg-role]');
-        for (let i = 0; i < buttons.length; i++) {
+        var buttons = container.querySelectorAll('[data-reg-role]');
+        for (var i = 0; i < buttons.length; i++) {
             buttons[i].classList.remove('active');
         }
-        const btn = container.querySelector('[data-reg-role="' + role + '"]');
+        var btn = container.querySelector('[data-reg-role="' + role + '"]');
         if (btn) btn.classList.add('active');
     }
-    const regIdLabel = document.getElementById('regIdLabel');
-    const regId = document.getElementById('regId');
-    const regClassGroup = document.getElementById('regClassGroup');
+    var regIdLabel = document.getElementById('regIdLabel');
+    var regId = document.getElementById('regId');
+    var regClassGroup = document.getElementById('regClassGroup');
     if (regIdLabel) regIdLabel.textContent = role === 'teacher' ? '工号' : '学号';
     if (regId) regId.placeholder = role === 'teacher' ? '请输入工号' : '请输入学号';
     if (regClassGroup) regClassGroup.style.display = role === 'teacher' ? 'none' : 'block';
@@ -2736,16 +2736,16 @@ function selectRegRole(role) {
 
 function selectRole(role) {
     currentRole = role;
-    const container = document.getElementById('loginFormArea');
+    var container = document.getElementById('loginFormArea');
     if (container) {
-        const buttons = container.querySelectorAll('.role-btn');
-        for (let i = 0; i < buttons.length; i++) {
+        var buttons = container.querySelectorAll('.role-btn');
+        for (var i = 0; i < buttons.length; i++) {
             buttons[i].classList.remove('active');
         }
-        const btn = container.querySelector('[data-role="' + role + '"]');
+        var btn = container.querySelector('[data-role="' + role + '"]');
         if (btn) btn.classList.add('active');
     }
-    const classSelectGroup = document.getElementById('classSelectGroup');
+    var classSelectGroup = document.getElementById('classSelectGroup');
     if (classSelectGroup) {
         classSelectGroup.style.display = role === 'student' ? 'block' : 'none';
     }
@@ -2822,7 +2822,7 @@ function handleLogin(e) {
 
 function handleRegister(e) {
     e.preventDefault();
-    const name = document.getElementById('regName').value.trim();
+    var name = document.getElementById('regName').value.trim();
     var id = document.getElementById('regId').value.trim();
     var phone = document.getElementById('regPhone').value.trim();
     var password = document.getElementById('regPassword').value;
@@ -2900,8 +2900,8 @@ function handleRegister(e) {
 }
 
 function showQRCode() {
-    const url = window.location.href;
-    const container = document.getElementById('qrCodeContainer');
+    var url = window.location.href;
+    var container = document.getElementById('qrCodeContainer');
     container.innerHTML = '';
     document.getElementById('qrUrlText').textContent = url;
 
@@ -2929,9 +2929,9 @@ function logout() {
 
 // ===== 教师端 =====
 function showPage(pageId) {
-    document.querySelectorAll('#teacherApp .page').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('#teacherApp .page').forEach(function(p) { return p.classList.add('hidden'; }));
     document.getElementById(pageId).classList.remove('hidden');
-    document.querySelectorAll('#teacherApp .sidebar-nav .nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('#teacherApp .sidebar-nav .nav-item').forEach(function(item) { return item.classList.remove('active'; }));
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
 
     if (pageId === 'teacherClasses') { renderTeacherClassPage(); updateAllTeacherClassSelectors(); }
@@ -2949,17 +2949,17 @@ function initTeacherDashboard() {
 }
 
 function updateStats() {
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = attendanceData[today] || {};
-    const present = Object.values(todayData).filter(s => s === 'present').length;
-    const total = students.length;
-    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+    var today = new Date().toISOString().split('T')[0];
+    var todayData = attendanceData[today] || {};
+    var present = Object.values(todayData).filter(function(s) { return s === 'present'; }).length;
+    var total = students.length;
+    var rate = total > 0 ? Math.round((present / total) * 100) : 0;
     document.getElementById('todayAttendance').textContent = rate + '%';
     document.getElementById('totalStudents').textContent = total;
 
-    let pending = 0;
-    homeworkData.forEach(hw => {
-        students.forEach(s => {
+    var pending = 0;
+    homeworkData.forEach(function(hw) {
+        students.forEach(function(s) {
             if (hw.submissions[s.id] && !hw.submissions[s.id].graded) pending++;
         });
     });
@@ -2967,49 +2967,49 @@ function updateStats() {
 }
 
 function renderDashboardCheckin() {
-    const container = document.getElementById('dashboardCheckin');
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = attendanceData[today] || {};
+    var container = document.getElementById('dashboardCheckin');
+    var today = new Date().toISOString().split('T')[0];
+    var todayData = attendanceData[today] || {};
 
-    container.innerHTML = students.slice(0, 8).map(s => {
-        const status = todayData[s.id] || 'unknown';
-        let statusClass = '';
-        let statusText = '未签到';
+    container.innerHTML = students.slice(0, 8).map(function(s) {
+        var status = todayData[s.id] || 'unknown';
+        var statusClass = '';
+        var statusText = '未签到';
         if (status === 'present') { statusClass = 'present'; statusText = '已签到'; }
         else if (status === 'late') { statusClass = 'late'; statusText = '迟到'; }
         else if (status === 'absent') { statusClass = 'absent'; statusText = '缺勤'; }
 
-        return `
-            <div class="checkin-card ${statusClass}">
-                <div class="checkin-avatar">${s.avatar}</div>
-                <div class="checkin-name">${s.name}</div>
-                <div class="checkin-status">${statusText}</div>
+        return '
+            <div class="checkin-card ' + statusClass + '">
+                <div class="checkin-avatar">' + s.avatar + '</div>
+                <div class="checkin-name">' + s.name + '</div>
+                <div class="checkin-status">' + statusText + '</div>
             </div>
-        `;
+        ';
     }).join('');
 }
 
 function renderDashboardHomework() {
-    const container = document.getElementById('dashboardHomework');
-    container.innerHTML = homeworkData.slice(0, 2).map(hw => {
-        const submitted = Object.keys(hw.submissions).length;
-        const total = students.length;
-        const progress = Math.round((submitted / total) * 100);
+    var container = document.getElementById('dashboardHomework');
+    container.innerHTML = homeworkData.slice(0, 2).map(function(hw) {
+        var submitted = Object.keys(hw.submissions).length;
+        var total = students.length;
+        var progress = Math.round((submitted / total) * 100);
 
-        return `
+        return '
             <div class="homework-item">
                 <div class="homework-header">
                     <div>
-                        <div class="homework-title">${hw.title}</div>
-                        <div class="homework-meta">截止: ${new Date(hw.deadline).toLocaleString('zh-CN')}</div>
+                        <div class="homework-title">' + hw.title + '</div>
+                        <div class="homework-meta">截止: ' + new Date(hw.deadline).toLocaleString('zh-CN') + '</div>
                     </div>
-                    <span class="badge ${progress === 100 ? 'badge-success' : 'badge-info'}">${progress}% 已提交</span>
+                    <span class="badge ' + progress === 100 ? 'badge-success' : 'badge-info' + '">' + progress + '% 已提交</span>
                 </div>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width:${progress}%"></div>
+                    <div class="progress-fill" style="width:' + progress + '%"></div>
                 </div>
             </div>
-        `;
+        ';
     }).join('');
 }
 
@@ -3022,34 +3022,34 @@ function renderCheckinPage() {
 }
 
 function renderTodayCheckin() {
-    const container = document.getElementById('todayCheckinGrid');
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = attendanceData[today] || {};
+    var container = document.getElementById('todayCheckinGrid');
+    var today = new Date().toISOString().split('T')[0];
+    var todayData = attendanceData[today] || {};
 
-    container.innerHTML = students.map(s => {
-        const status = todayData[s.id] || 'unknown';
-        let statusClass = '';
-        let statusText = '未签到';
+    container.innerHTML = students.map(function(s) {
+        var status = todayData[s.id] || 'unknown';
+        var statusClass = '';
+        var statusText = '未签到';
         if (status === 'present') { statusClass = 'present'; statusText = '已签到'; }
         else if (status === 'late') { statusClass = 'late'; statusText = '迟到'; }
         else if (status === 'absent') { statusClass = 'absent'; statusText = '缺勤'; }
 
-        return `
-            <div class="checkin-card ${statusClass}" onclick="toggleStudentStatus('${s.id}')">
-                <div class="checkin-avatar">${s.avatar}</div>
-                <div class="checkin-name">${s.name}</div>
-                <div class="checkin-status">${statusText}</div>
+        return '
+            <div class="checkin-card ' + statusClass + '" onclick="toggleStudentStatus('' + s.id + '')">
+                <div class="checkin-avatar">' + s.avatar + '</div>
+                <div class="checkin-name">' + s.name + '</div>
+                <div class="checkin-status">' + statusText + '</div>
             </div>
-        `;
+        ';
     }).join('');
 }
 
 function toggleStudentStatus(studentId) {
-    const today = new Date().toISOString().split('T')[0];
+    var today = new Date().toISOString().split('T')[0];
     if (!attendanceData[today]) attendanceData[today] = {};
 
-    const current = attendanceData[today][studentId];
-    let next = 'present';
+    var current = attendanceData[today][studentId];
+    var next = 'present';
     if (current === 'present') next = 'late';
     else if (current === 'late') next = 'absent';
     else if (current === 'absent') next = null;
@@ -3072,11 +3072,11 @@ function startCheckin() {
     document.getElementById('checkinStatus').className = 'badge badge-success';
 
     if (checkinTimer) clearInterval(checkinTimer);
-    checkinTimer = setInterval(() => {
+    checkinTimer = setInterval(function() {
         checkinTimeLeft--;
-        const mins = Math.floor(checkinTimeLeft / 60).toString().padStart(2, '0');
-        const secs = (checkinTimeLeft % 60).toString().padStart(2, '0');
-        document.getElementById('checkinTimer').textContent = `剩余时间: ${mins}:${secs}`;
+        var mins = Math.floor(checkinTimeLeft / 60).toString().padStart(2, '0');
+        var secs = (checkinTimeLeft % 60).toString().padStart(2, '0');
+        document.getElementById('checkinTimer').textContent = '剩余时间: ' + mins + ':' + secs + '';
 
         if (checkinTimeLeft <= 0) {
             clearInterval(checkinTimer);
@@ -3090,54 +3090,54 @@ function startCheckin() {
 }
 
 function renderCheckinHistory() {
-    const tbody = document.getElementById('checkinHistoryTable');
-    const dates = Object.keys(attendanceData).sort().reverse().slice(0, 10);
+    var tbody = document.getElementById('checkinHistoryTable');
+    var dates = Object.keys(attendanceData).sort().reverse().slice(0, 10);
 
-    tbody.innerHTML = dates.map(date => {
-        const data = attendanceData[date];
-        const present = Object.values(data).filter(s => s === 'present').length;
-        const late = Object.values(data).filter(s => s === 'late').length;
-        const absent = Object.values(data).filter(s => s === 'absent').length;
-        const total = students.length;
-        const rate = Math.round((present / total) * 100);
+    tbody.innerHTML = dates.map(function(date) {
+        var data = attendanceData[date];
+        var present = Object.values(data).filter(function(s) { return s === 'present'; }).length;
+        var late = Object.values(data).filter(function(s) { return s === 'late'; }).length;
+        var absent = Object.values(data).filter(function(s) { return s === 'absent'; }).length;
+        var total = students.length;
+        var rate = Math.round((present / total) * 100);
 
-        return `
+        return '
             <tr>
-                <td>${date}</td>
-                <td>${total}</td>
-                <td>${present}</td>
-                <td>${late}</td>
-                <td>${absent}</td>
-                <td><span class="badge ${rate >= 90 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger'}">${rate}%</span></td>
+                <td>' + date + '</td>
+                <td>' + total + '</td>
+                <td>' + present + '</td>
+                <td>' + late + '</td>
+                <td>' + absent + '</td>
+                <td><span class="badge ' + rate >= 90 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger' + '">' + rate + '%</span></td>
             </tr>
-        `;
+        ';
     }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-secondary);">暂无记录</td></tr>';
 }
 
 function renderPersonalStats() {
-    const tbody = document.getElementById('personalStatsTable');
-    const dates = Object.keys(attendanceData);
+    var tbody = document.getElementById('personalStatsTable');
+    var dates = Object.keys(attendanceData);
 
-    tbody.innerHTML = students.map(s => {
-        let present = 0, late = 0, absent = 0;
-        dates.forEach(date => {
-            const status = attendanceData[date][s.id];
+    tbody.innerHTML = students.map(function(s) {
+        var present = 0, late = 0, absent = 0;
+        dates.forEach(function(date) {
+            var status = attendanceData[date][s.id];
             if (status === 'present') present++;
             else if (status === 'late') late++;
             else if (status === 'absent') absent++;
         });
-        const total = dates.length || 1;
-        const rate = Math.round((present / total) * 100);
+        var total = dates.length || 1;
+        var rate = Math.round((present / total) * 100);
 
-        return `
+        return '
             <tr>
-                <td>${s.name}</td>
-                <td>${present}</td>
-                <td>${late}</td>
-                <td>${absent}</td>
-                <td><span class="badge ${rate >= 90 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger'}">${rate}%</span></td>
+                <td>' + s.name + '</td>
+                <td>' + present + '</td>
+                <td>' + late + '</td>
+                <td>' + absent + '</td>
+                <td><span class="badge ' + rate >= 90 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger' + '">' + rate + '%</span></td>
             </tr>
-        `;
+        ';
     }).join('');
 }
 
@@ -3183,21 +3183,21 @@ function processRosterContent(content, fileName) {
         // 尝试修复 GBK 乱码（简单替换常见乱码字符）
         content = fixGarbledText(content);
         
-        const lines = content.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+        var lines = content.split(/\r?\n/).map(function(line) { return line.trim(; })).filter(function(line) { return line.length > 0; });
         if (lines.length === 0) {
             showToast('文件内容为空', 'error');
             return;
         }
 
         // 解析表头
-        const headerLine = lines[0];
-        const headers = parseCSVLine(headerLine);
+        var headerLine = lines[0];
+        var headers = parseCSVLine(headerLine);
         
         // 判断是否是考勤表（有日期列）还是纯名单
-        const isAttendanceSheet = headers.length > 1 && headers.some(h => /^\d{1,2}[-\/]\d{1,2}/.test(h));
+        var isAttendanceSheet = headers.length > 1 && headers.some(function(h) { return /^\d{1; },2}[-\/]\d{1,2}/.test(h));
         
-        const newStudents = [];
-        const importedAttendance = {}; // date -> {studentId -> status}
+        var newStudents = [];
+        var importedAttendance = {}; // date -> {studentId -> status}
         
         // 通用：判断是否为有效学生姓名
         function isValidStudentName(name) {
@@ -3213,7 +3213,7 @@ function processRosterContent(content, fileName) {
                 name.includes('urn:') || name.includes('REC-')) return false;
             
             // 过滤CSS属性（根据截图中的实际乱码内容）
-            const cssPatterns = [
+            var cssPatterns = [
                 'font-weight:', 'font-style:', 'font-family:', 'font-size:',
                 'color:', 'background:', 'border:', 'padding-', 'margin-',
                 'text-align:', 'white-space:', 'vertical-align:', 'line-height:',
@@ -3226,7 +3226,7 @@ function processRosterContent(content, fileName) {
                 'mso-', 'windowtext', '10.0pt', 'stylesheet',
                 'style=', 'class=', 'id=', 'name='
             ];
-            for (let p of cssPatterns) {
+            for (var p of cssPatterns) {
                 if (name.includes(p)) return false;
             }
             
@@ -3243,16 +3243,16 @@ function processRosterContent(content, fileName) {
 
         if (isAttendanceSheet) {
             // 考勤表格式：姓名,日期1,日期2,...
-            const dateHeaders = headers.slice(1);
+            var dateHeaders = headers.slice(1);
             
-            for (let i = 1; i < lines.length; i++) {
-                const cells = parseCSVLine(lines[i]);
+            for (var i = 1; i < lines.length; i++) {
+                var cells = parseCSVLine(lines[i]);
                 if (cells.length === 0) continue;
                 
-                let name = isValidStudentName(cells[0].trim());
+                var name = isValidStudentName(cells[0].trim());
                 if (!name || name === '姓名' || name === '学生') continue;
                 
-                const studentId = 's' + Date.now() + '_' + i;
+                var studentId = 's' + Date.now() + '_' + i;
                 newStudents.push({
                     id: studentId,
                     name: name,
@@ -3260,10 +3260,10 @@ function processRosterContent(content, fileName) {
                 });
                 
                 // 解析考勤标记
-                for (let j = 1; j < cells.length && j <= dateHeaders.length; j++) {
-                    const dateKey = normalizeDate(dateHeaders[j - 1]);
-                    const mark = cells[j].trim();
-                    const status = parseAttendanceMark(mark);
+                for (var j = 1; j < cells.length && j <= dateHeaders.length; j++) {
+                    var dateKey = normalizeDate(dateHeaders[j - 1]);
+                    var mark = cells[j].trim();
+                    var status = parseAttendanceMark(mark);
                     
                     if (status) {
                         if (!importedAttendance[dateKey]) importedAttendance[dateKey] = {};
@@ -3273,9 +3273,9 @@ function processRosterContent(content, fileName) {
             }
         } else {
             // 纯名单格式：每行一个姓名
-            lines.forEach((line, idx) => {
-                const names = line.includes(',') ? line.split(',').map(n => n.trim()) : [line];
-                names.forEach(name => {
+            lines.forEach(function(line, idx) {
+                var names = line.includes(',') ? line.split(',').map(function(n) { return n.trim(; })) : [line];
+                names.forEach(function(name) {
                     name = isValidStudentName(name);
                     if (!name || name === '姓名' || name === 'name' || name === '学生') return;
                     
@@ -3294,16 +3294,16 @@ function processRosterContent(content, fileName) {
         }
 
         // 替换当前班级的学生名单
-        const cls = classData.find(c => c.id === teacherCurrentClassId);
+        var cls = classData.find(function(c) { return c.id === teacherCurrentClassId; });
         if (cls) {
             cls.students = newStudents;
             localStorage.setItem('classData', JSON.stringify(classData));
         }
         students.length = 0;
-        newStudents.forEach(s => students.push(s));
+        newStudents.forEach(function(s) { students.push(s; }));
         
         // 合并导入的考勤数据
-        Object.keys(importedAttendance).forEach(date => {
+        Object.keys(importedAttendance).forEach(function(date) {
             if (!attendanceData[date]) attendanceData[date] = {};
             Object.assign(attendanceData[date], importedAttendance[date]);
         });
@@ -3321,9 +3321,9 @@ function processRosterContent(content, fileName) {
         renderAttendanceMatrix(); // 刷新考勤矩阵
         updateStats();
 
-        const msg = isAttendanceSheet 
-            ? `成功导入 ${students.length} 名学生及考勤记录` 
-            : `成功导入 ${students.length} 名学生`;
+        var msg = isAttendanceSheet 
+            ? '成功导入 ' + students.length + ' 名学生及考勤记录' 
+            : '成功导入 ' + students.length + ' 名学生';
         showToast(msg, 'success');
     };
     reader.readAsText(file, 'UTF-8');
@@ -3332,7 +3332,7 @@ function processRosterContent(content, fileName) {
 // 修复乱码文本 - 将UTF-8错误解析的GBK乱码替换为正确字符
 function fixGarbledText(text) {
     // 这些是多字节UTF-8字符被错误当作单字节解析时产生的乱码模式
-    const fixes = {
+    var fixes = {
         '\u00E2\u20AC\u201C': '\u201C',  // "
         '\u00E2\u20AC\u201D': '\u201D',  // "
         '\u00E2\u20AC\u02DC': '\uFF5E',  // ～
@@ -3351,10 +3351,10 @@ function fixGarbledText(text) {
         '\u00EF\u00BC\u0081': '\uFF01'   // ！
     };
     
-    let result = text;
-    Object.keys(fixes).forEach(garbled => {
+    var result = text;
+    Object.keys(fixes).forEach(function(garbled) {
         // 使用字符串分割替换，避免正则特殊字符问题
-        const correct = fixes[garbled];
+        var correct = fixes[garbled];
         while (result.indexOf(garbled) !== -1) {
             result = result.split(garbled).join(correct);
         }
@@ -3365,12 +3365,12 @@ function fixGarbledText(text) {
 
 // 解析 CSV 行（处理引号）
 function parseCSVLine(line) {
-    const cells = [];
-    let current = '';
-    let inQuotes = false;
+    var cells = [];
+    var current = '';
+    var inQuotes = false;
     
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
+    for (var i = 0; i < line.length; i++) {
+        var char = line[i];
         if (char === '"') {
             inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {
@@ -3387,12 +3387,12 @@ function parseCSVLine(line) {
 // 标准化日期格式
 function normalizeDate(dateStr) {
     // 支持 6-20, 06-20, 2026-06-20 等格式
-    const match = dateStr.match(/(\d{1,2})[-\/](\d{1,2})/);
+    var match = dateStr.match(/(\d{1,2})[-\/](\d{1,2})/);
     if (match) {
-        const month = match[1].padStart(2, '0');
-        const day = match[2].padStart(2, '0');
-        const year = new Date().getFullYear();
-        return `${year}-${month}-${day}`;
+        var month = match[1].padStart(2, '0');
+        var day = match[2].padStart(2, '0');
+        var year = new Date().getFullYear();
+        return '' + year + '-' + month + '-' + day + '';
     }
     return dateStr;
 }
@@ -3400,7 +3400,7 @@ function normalizeDate(dateStr) {
 // 解析考勤标记
 function parseAttendanceMark(mark) {
     if (!mark) return null;
-    const m = mark.trim();
+    var m = mark.trim();
     // √ ✓ ✔ 出勤
     if (/^[√✓✔vV]+$/.test(m)) return 'present';
     // ○ ◯ 〇 迟到
@@ -3416,50 +3416,50 @@ function parseAttendanceMark(mark) {
 
 // 渲染考勤矩阵表格（支持编辑）
 function renderAttendanceMatrix() {
-    const container = document.getElementById('attendanceMatrixContainer');
+    var container = document.getElementById('attendanceMatrixContainer');
     if (!container) return;
     
-    const dates = Object.keys(attendanceData).sort();
+    var dates = Object.keys(attendanceData).sort();
     if (dates.length === 0 || students.length === 0) {
         container.innerHTML = '<div class="empty-state">暂无考勤记录，请导入考勤表或开始签到</div>';
         return;
     }
     
     // 构建表格
-    let html = '<div style="overflow-x:auto;"><table class="data-table attendance-matrix">';
+    var html = '<div style="overflow-x:auto;"><table class="data-table attendance-matrix">';
     
     // 表头
     html += '<thead><tr><th style="min-width:100px;">学生</th>';
-    dates.forEach(date => {
-        const display = date.substring(5); // MM-DD
-        html += `<th style="min-width:60px; text-align:center;">${display}</th>`;
+    dates.forEach(function(date) {
+        var display = date.substring(5); // MM-DD
+        html += '<th style="min-width:60px; text-align:center;">' + display + '</th>';
     });
     html += '<th style="min-width:80px;">出勤率</th></tr></thead>';
     
     // 表格体
     html += '<tbody>';
-    students.forEach(s => {
-        let present = 0, late = 0, absent = 0, total = 0;
+    students.forEach(function(s) {
+        var present = 0, late = 0, absent = 0, total = 0;
         
-        html += `<tr><td style="font-weight:500;">${s.name}</td>`;
+        html += '<tr><td style="font-weight:500;">' + s.name + '</td>';
         
-        dates.forEach(date => {
-            const status = attendanceData[date][s.id];
-            let mark = '';
-            let cellClass = '';
+        dates.forEach(function(date) {
+            var status = attendanceData[date][s.id];
+            var mark = '';
+            var cellClass = '';
             
             if (status === 'present') { mark = '√'; cellClass = 'status-present'; present++; total++; }
             else if (status === 'late') { mark = '○'; cellClass = 'status-late'; late++; total++; }
             else if (status === 'absent') { mark = '×'; cellClass = 'status-absent'; absent++; total++; }
             else { mark = '-'; cellClass = 'status-none'; }
             
-            html += `<td class="attendance-cell ${cellClass}" 
-                        onclick="editAttendanceCell('${s.id}', '${date}')" 
-                        style="text-align:center; cursor:pointer; font-size:1.1rem; font-weight:600;">${mark}</td>`;
+            html += '<td class="attendance-cell ' + cellClass + '" 
+                        onclick="editAttendanceCell('' + s.id + '', '' + date + '')" 
+                        style="text-align:center; cursor:pointer; font-size:1.1rem; font-weight:600;">' + mark + '</td>';
         });
         
-        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-        html += `<td><span class="badge ${rate >= 90 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger'}">${rate}%</span></td>`;
+        var rate = total > 0 ? Math.round((present / total) * 100) : 0;
+        html += '<td><span class="badge ' + rate >= 90 ? 'badge-success' : rate >= 80 ? 'badge-warning' : 'badge-danger' + '">' + rate + '%</span></td>';
         html += '</tr>';
     });
     
@@ -3469,10 +3469,10 @@ function renderAttendanceMatrix() {
 
 // 编辑考勤单元格
 function editAttendanceCell(studentId, date) {
-    const currentStatus = attendanceData[date] ? attendanceData[date][studentId] : null;
+    var currentStatus = attendanceData[date] ? attendanceData[date][studentId] : null;
     
     // 循环切换状态：null -> present -> late -> absent -> null
-    let newStatus = null;
+    var newStatus = null;
     if (currentStatus === null || currentStatus === undefined) newStatus = 'present';
     else if (currentStatus === 'present') newStatus = 'late';
     else if (currentStatus === 'late') newStatus = 'absent';
@@ -3490,13 +3490,13 @@ function editAttendanceCell(studentId, date) {
     renderPersonalStats();
     updateStats();
     
-    const statusText = newStatus === 'present' ? '出勤' : newStatus === 'late' ? '迟到' : newStatus === 'absent' ? '缺勤' : '未签到';
-    showToast(`已更新为：${statusText}`, 'success');
+    var statusText = newStatus === 'present' ? '出勤' : newStatus === 'late' ? '迟到' : newStatus === 'absent' ? '缺勤' : '未签到';
+    showToast('已更新为：' + statusText + '', 'success');
 }
 
 // 导出考勤统计 - 输出与导入格式一致的考勤表
 function exportAttendanceStats() {
-    const dates = Object.keys(attendanceData).sort();
+    var dates = Object.keys(attendanceData).sort();
     
     if (dates.length === 0 || students.length === 0) {
         showToast('暂无考勤数据可导出', 'error');
@@ -3504,18 +3504,18 @@ function exportAttendanceStats() {
     }
     
     // 构建与导入格式一致的 CSV
-    let csv = '\uFEFF'; // UTF-8 BOM
+    var csv = '\uFEFF'; // UTF-8 BOM
     
     // 表头：姓名,日期1,日期2,...
-    const displayDates = dates.map(d => d.substring(5)); // MM-DD
+    var displayDates = dates.map(function(d) { return d.substring(5; })); // MM-DD
     csv += '姓名,' + displayDates.join(',') + '\n';
     
     // 数据行
-    students.forEach(s => {
+    students.forEach(function(s) {
         csv += s.name;
-        dates.forEach(date => {
-            const status = attendanceData[date][s.id];
-            let mark = '';
+        dates.forEach(function(date) {
+            var status = attendanceData[date][s.id];
+            var mark = '';
             if (status === 'present') mark = '√';
             else if (status === 'late') mark = '○';
             else if (status === 'absent') mark = '×';
@@ -3524,39 +3524,39 @@ function exportAttendanceStats() {
         csv += '\n';
     });
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `考勤表_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = '考勤表_' + new Date().toISOString().split('T')[0] + '.csv';
     link.click();
     showToast('考勤表已导出（√出勤 ○迟到 ×缺勤）', 'success');
 }
 
 // 点名功能
 function renderRollCallPage() {
-    const grid = document.getElementById('studentListGrid');
-    grid.innerHTML = students.map(s => `
-        <div class="student-chip" id="chip-${s.id}">${s.name}</div>
-    `).join('');
+    var grid = document.getElementById('studentListGrid');
+    grid.innerHTML = students.map(function(s) {
+        return '<div class="student-chip" id="chip-' + s.id + '">' + s.name + '</div>';
+    }).join('');
 
-    const historyTbody = document.getElementById('rollCallHistory');
-    historyTbody.innerHTML = rollCallHistory.slice().reverse().map(r => `
-        <tr>
-            <td>${r.time}</td>
-            <td>${r.studentName}</td>
-            <td><span class="badge ${r.answered ? 'badge-success' : 'badge-warning'}">${r.answered ? '已回答' : '未回答'}</span></td>
-            <td>
-                <button class="btn btn-sm ${r.answered ? 'btn-outline' : 'btn-success'}" onclick="markAnswered('${r.id}', ${!r.answered})">
-                    ${r.answered ? '标记未答' : '标记已答'}
-                </button>
-            </td>
-        </tr>
-    `).join('') || '<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">暂无记录</td></tr>';
+    var historyTbody = document.getElementById('rollCallHistory');
+    historyTbody.innerHTML = rollCallHistory.slice().reverse().map(function(r) {
+        return '<tr>' +
+            '<td>' + r.time + '</td>' +
+            '<td>' + r.studentName + '</td>' +
+            '<td><span class="badge ' + (r.answered ? 'badge-success' : 'badge-warning') + '">' + (r.answered ? '已回答' : '未回答') + '</span></td>' +
+            '<td>' +
+                '<button class="btn btn-sm ' + (r.answered ? 'btn-outline' : 'btn-success') + '" onclick="markAnswered(\'' + r.id + '\', ' + (!r.answered) + ')">' +
+                    (r.answered ? '标记未答' : '标记已答') +
+                '</button>' +
+            '</td>' +
+        '</tr>';
+    }).join('') || '<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">暂无记录</td></tr>';
 }
 
 function startRollCall() {
-    const display = document.getElementById('pickerDisplay');
-    const btn = document.getElementById('rollCallBtn');
+    var display = document.getElementById('pickerDisplay');
+    var btn = document.getElementById('rollCallBtn');
 
     if (rollCallInterval) {
         clearInterval(rollCallInterval);
@@ -3569,24 +3569,24 @@ function startRollCall() {
     btn.textContent = '停止';
     display.classList.add('rolling');
 
-    rollCallInterval = setInterval(() => {
-        const random = students[Math.floor(Math.random() * students.length)];
+    rollCallInterval = setInterval(function() {
+        var random = students[Math.floor(Math.random() * students.length)];
         display.textContent = random.name;
     }, 80);
 
-    setTimeout(() => {
+    setTimeout(function() {
         clearInterval(rollCallInterval);
         rollCallInterval = null;
         btn.textContent = '开始点名';
         display.classList.remove('rolling');
 
-        const selected = students[Math.floor(Math.random() * students.length)];
+        var selected = students[Math.floor(Math.random() * students.length)];
         display.textContent = selected.name;
 
-        document.querySelectorAll('.student-chip').forEach(chip => chip.classList.remove('selected'));
-        document.getElementById(`chip-${selected.id}`).classList.add('selected');
+        document.querySelectorAll('.student-chip').forEach(function(chip) { return chip.classList.remove('selected'; }));
+        document.getElementById('chip-' + selected.id + '').classList.add('selected');
 
-        const record = {
+        var record = {
             id: Date.now().toString(),
             studentId: selected.id,
             studentName: selected.name,
@@ -3597,12 +3597,12 @@ function startRollCall() {
         saveClassIsolatedData('rollCallHistory', rollCallHistory);
         renderRollCallPage();
 
-        showToast(`点名: ${selected.name}`, 'success');
+        showToast('点名: ' + selected.name + '', 'success');
     }, 3000);
 }
 
 function markAnswered(recordId, answered) {
-    const record = rollCallHistory.find(r => r.id === recordId);
+    var record = rollCallHistory.find(function(r) { return r.id === recordId; });
     if (record) {
         record.answered = answered;
         saveClassIsolatedData('rollCallHistory', rollCallHistory);
@@ -3612,133 +3612,143 @@ function markAnswered(recordId, answered) {
 
 // 作业管理
 function renderHomeworkPage() {
-    const container = document.getElementById('homeworkListContainer');
-    container.innerHTML = homeworkData.map(hw => {
-        const submitted = Object.keys(hw.submissions).length;
-        const graded = Object.values(hw.submissions).filter(s => s.graded).length;
-        const total = students.length;
-        const progress = Math.round((submitted / total) * 100);
+    var container = document.getElementById('homeworkListContainer');
+    container.innerHTML = homeworkData.map(function(hw) {
+        var submitted = Object.keys(hw.submissions).length;
+        var graded = Object.values(hw.submissions).filter(function(s) { return s.graded; }).length;
+        var total = students.length;
+        var progress = Math.round((submitted / total) * 100);
 
-        return `
+        return '
             <div class="card">
                 <div class="card-body">
                     <div class="homework-item" style="margin-bottom:0;">
                         <div class="homework-header">
                             <div>
-                                <div class="homework-title">${hw.title}</div>
-                                <div class="homework-meta">${hw.desc}</div>
-                                <div class="homework-meta" style="margin-top:4px;">截止: ${new Date(hw.deadline).toLocaleString('zh-CN')}</div>
+                                <div class="homework-title">' + hw.title + '</div>
+                                <div class="homework-meta">' + hw.desc + '</div>
+                                <div class="homework-meta" style="margin-top:4px;">截止: ' + new Date(hw.deadline).toLocaleString('zh-CN') + '</div>
                             </div>
-                            <button class="btn btn-info btn-sm" onclick="viewSubmissions('${hw.id}')">查看提交</button>
+                            <button class="btn btn-info btn-sm" onclick="viewSubmissions('' + hw.id + '')">查看提交</button>
                         </div>
                         <div class="homework-stats">
                             <div class="homework-stat">
-                                <div class="homework-stat-value">${submitted}</div>
+                                <div class="homework-stat-value">' + submitted + '</div>
                                 <div class="homework-stat-label">已提交</div>
                             </div>
                             <div class="homework-stat">
-                                <div class="homework-stat-value">${graded}</div>
+                                <div class="homework-stat-value">' + graded + '</div>
                                 <div class="homework-stat-label">已批改</div>
                             </div>
                             <div class="homework-stat">
-                                <div class="homework-stat-value">${total - submitted}</div>
+                                <div class="homework-stat-value">' + total - submitted + '</div>
                                 <div class="homework-stat-label">未提交</div>
                             </div>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width:${progress}%"></div>
+                            <div class="progress-fill" style="width:' + progress + '%"></div>
                         </div>
                     </div>
                 </div>
             </div>
-        `;
+        ';
     }).join('');
 
     renderPendingSubmissions();
 }
 
 function renderPendingSubmissions() {
-    const container = document.getElementById('pendingSubmissions');
-    let pending = [];
-    homeworkData.forEach(hw => {
-        Object.entries(hw.submissions).forEach(([sid, sub]) => {
-            if (!sub.graded) {
-                const student = students.find(s => s.id === sid);
-                pending.push({ ...sub, student, hwTitle: hw.title, hwId: hw.id, studentId: sid });
+    var container = document.getElementById('pendingSubmissions');
+    var pending = [];
+    homeworkData.forEach(function(hw) {
+        var submissions = hw.submissions;
+        for (var sid in submissions) {
+            if (submissions.hasOwnProperty(sid)) {
+                var sub = submissions[sid];
+                if (!sub.graded) {
+                    var student = students.find(function(s) { return s.id === sid; });
+                    var item = {};
+                    for (var key in sub) { item[key] = sub[key]; }
+                    item.student = student;
+                    item.hwTitle = hw.title;
+                    item.hwId = hw.id;
+                    item.studentId = sid;
+                    pending.push(item);
+                }
             }
-        });
+        }
     });
 
-    container.innerHTML = pending.map(p => `
-        <div class="homework-item">
-            <div class="homework-header">
-                <div>
-                    <div class="homework-title">${p.hwTitle}</div>
-                    <div class="homework-meta">提交学生: ${p.student.name} | 提交时间: ${p.submittedAt}</div>
-                </div>
-                <button class="btn btn-success btn-sm" onclick="openGradeModal('${p.hwId}', '${p.studentId}')">去批改</button>
-            </div>
-        </div>
-    `).join('') || '<div class="empty-state">暂无待批改作业</div>';
+    container.innerHTML = pending.map(function(p) {
+        return '<div class="homework-item">' +
+            '<div class="homework-header">' +
+                '<div>' +
+                    '<div class="homework-title">' + p.hwTitle + '</div>' +
+                    '<div class="homework-meta">提交学生: ' + p.student.name + ' | 提交时间: ' + p.submittedAt + '</div>' +
+                '</div>' +
+                '<button class="btn btn-success btn-sm" onclick="openGradeModal(\'' + p.hwId + '\', \'' + p.studentId + '\')">去批改</button>' +
+            '</div>' +
+        '</div>';
+    }).join('') || '<div class="empty-state">暂无待批改作业</div>';
 }
 
 function viewSubmissions(hwId) {
-    const hw = homeworkData.find(h => h.id === hwId);
+    var hw = homeworkData.find(function(h) { return h.id === hwId; });
     if (!hw) return;
 
-    let html = `<h4 style="margin-bottom:16px;">${hw.title} - 提交情况</h4>`;
+    var html = '<h4 style="margin-bottom:16px;">' + hw.title + ' - 提交情况</h4>';
     html += '<table class="data-table"><thead><tr><th>学生</th><th>状态</th><th>提交时间</th><th>成绩</th><th>操作</th></tr></thead><tbody>';
 
-    students.forEach(s => {
-        const sub = hw.submissions[s.id];
+    students.forEach(function(s) {
+        var sub = hw.submissions[s.id];
         if (sub) {
-            html += `
+            html += '
                 <tr>
-                    <td>${s.name}</td>
+                    <td>' + s.name + '</td>
                     <td><span class="badge badge-success">已提交</span></td>
-                    <td>${sub.submittedAt}</td>
-                    <td>${sub.score !== undefined ? sub.score : '-'}</td>
+                    <td>' + sub.submittedAt + '</td>
+                    <td>' + sub.score !== undefined ? sub.score : '-' + '</td>
                     <td>
-                        ${!sub.graded ? `<button class="btn btn-success btn-sm" onclick="openGradeModal('${hwId}', '${s.id}')">批改</button>` : '<span class="badge badge-info">已批改</span>'}
+                        ${!sub.graded ? '<button class="btn btn-success btn-sm" onclick="openGradeModal('${hwId}', '${s.id}')">批改</button>' : '<span class="badge badge-info">已批改</span>'}
                     </td>
                 </tr>
-            `;
+            ';
         } else {
-            html += `
+            html += '
                 <tr>
-                    <td>${s.name}</td>
+                    <td>' + s.name + '</td>
                     <td><span class="badge badge-warning">未提交</span></td>
                     <td>-</td>
                     <td>-</td>
                     <td>-</td>
                 </tr>
-            `;
+            ';
         }
     });
 
     html += '</tbody></table>';
 
-    const modal = document.createElement('div');
+    var modal = document.createElement('div');
     modal.className = 'modal-overlay active';
-    modal.innerHTML = `
+    modal.innerHTML = '
         <div class="modal" style="max-width:800px;">
             <div class="modal-header">
                 <h3>作业提交详情</h3>
                 <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
             </div>
-            <div class="modal-body">${html}</div>
+            <div class="modal-body">' + html + '</div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">关闭</button>
             </div>
         </div>
-    `;
+    ';
     document.body.appendChild(modal);
 }
 
 function createHomework() {
-    const title = document.getElementById('hwTitle').value;
-    const desc = document.getElementById('hwDesc').value;
-    const deadline = document.getElementById('hwDeadline').value;
+    var title = document.getElementById('hwTitle').value;
+    var desc = document.getElementById('hwDesc').value;
+    var deadline = document.getElementById('hwDeadline').value;
 
     if (!title || !deadline) {
         showToast('请填写完整信息', 'error');
@@ -3767,18 +3777,18 @@ function createHomework() {
 
 function openGradeModal(hwId, studentId) {
     currentGradeSubmission = { hwId, studentId };
-    const hw = homeworkData.find(h => h.id === hwId);
-    const student = students.find(s => s.id === studentId);
-    const sub = hw.submissions[studentId];
+    var hw = homeworkData.find(function(h) { return h.id === hwId; });
+    var student = students.find(function(s) { return s.id === studentId; });
+    var sub = hw.submissions[studentId];
 
-    document.getElementById('gradeStudentInfo').innerHTML = `
-        <p><strong>作业:</strong> ${hw.title}</p>
-        <p><strong>学生:</strong> ${student.name}</p>
-        <p><strong>提交时间:</strong> ${sub.submittedAt}</p>
-        ${sub.fileName ? `<p><strong>附件:</strong> ${sub.fileName}</p>` : ''}
-        ${sub.comment ? `<p><strong>学生备注:</strong> ${sub.comment}</p>` : ''}
+    document.getElementById('gradeStudentInfo').innerHTML = '
+        <p><strong>作业:</strong> ' + hw.title + '</p>
+        <p><strong>学生:</strong> ' + student.name + '</p>
+        <p><strong>提交时间:</strong> ' + sub.submittedAt + '</p>
+        ${sub.fileName ? '<p><strong>附件:</strong> ${sub.fileName}</p>' : ''}
+        ${sub.comment ? '<p><strong>学生备注:</strong> ${sub.comment}</p>' : ''}
         <hr style="margin:16px 0; border:none; border-top:1px solid var(--border);">
-    `;
+    ';
 
     document.getElementById('gradeScore').value = sub.score || '';
     document.getElementById('gradeComment').value = sub.comment || '';
@@ -3793,15 +3803,15 @@ function setGrade(stars) {
 }
 
 function updateStarDisplay(filled) {
-    document.querySelectorAll('#gradeStars .star').forEach((star, i) => {
+    document.querySelectorAll('#gradeStars .star').forEach(function(star, i) {
         star.classList.toggle('filled', i < filled);
     });
 }
 
 function submitGrade() {
     if (!currentGradeSubmission) return;
-    const { hwId, studentId } = currentGradeSubmission;
-    const hw = homeworkData.find(h => h.id === hwId);
+    var { hwId, studentId } = currentGradeSubmission;
+    var hw = homeworkData.find(function(h) { return h.id === hwId; });
 
     if (hw && hw.submissions[studentId]) {
         hw.submissions[studentId].score = parseInt(document.getElementById('gradeScore').value) || 0;
@@ -3820,22 +3830,22 @@ function submitGrade() {
 // 在线监督 - 视频进度监控
 function renderMonitorPage() {
     // 填充视频选择下拉
-    const select = document.getElementById('monitorVideoSelect');
+    var select = document.getElementById('monitorVideoSelect');
     if (select.children.length === 0) {
-        select.innerHTML = videoData.map(v => `<option value="${v.id}">${v.title}</option>`).join('');
+        select.innerHTML = videoData.map(function(v) { return '<option value="' + v.id + '">' + v.title + '</option>'; }).join('');
     }
-    const selectedVideoId = select.value || (videoData[0] && videoData[0].id);
-    const video = videoData.find(v => v.id === selectedVideoId);
+    var selectedVideoId = select.value || (videoData[0] && videoData[0].id);
+    var video = videoData.find(function(v) { return v.id === selectedVideoId; });
     if (!video) return;
 
     document.getElementById('monitorTotalVideos').textContent = videoData.length;
 
-    const grid = document.getElementById('monitorGrid');
-    let completed = 0, watching = 0, notStarted = 0;
+    var grid = document.getElementById('monitorGrid');
+    var completed = 0, watching = 0, notStarted = 0;
 
-    grid.innerHTML = students.map(s => {
-        const sp = (videoProgressData[s.id] || {})[selectedVideoId];
-        let progress = 0, statusBadge = '', statusText = '未开始', barColor = 'var(--danger)';
+    grid.innerHTML = students.map(function(s) {
+        var sp = (videoProgressData[s.id] || {})[selectedVideoId];
+        var progress = 0, statusBadge = '', statusText = '未开始', barColor = 'var(--danger)';
 
         if (sp) {
             progress = Math.min(100, Math.round((sp.watched / video.duration) * 100));
@@ -3855,41 +3865,41 @@ function renderMonitorPage() {
             notStarted++;
         }
 
-        return `
+        return '
             <div class="monitor-card">
                 <div class="monitor-header">
-                    <div class="monitor-avatar">${s.avatar}</div>
+                    <div class="monitor-avatar">' + s.avatar + '</div>
                     <div class="monitor-info">
-                        <h4>${s.name}</h4>
-                        <span>${statusText}</span>
+                        <h4>' + s.name + '</h4>
+                        <span>' + statusText + '</span>
                     </div>
-                    ${statusBadge}
+                    ' + statusBadge + '
                 </div>
                 <div style="margin-top:12px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <span style="font-size:0.8rem; color:var(--text-secondary);">观看进度</span>
-                        <span style="font-size:0.85rem; font-weight:600; color:var(--primary);">${progress}%</span>
+                        <span style="font-size:0.85rem; font-weight:600; color:var(--primary);">' + progress + '%</span>
                     </div>
                     <div class="progress-bar" style="height:8px;">
-                        <div class="progress-fill" style="width:${progress}%; background:${barColor};"></div>
+                        <div class="progress-fill" style="width:' + progress + '%; background:' + barColor + ';"></div>
                     </div>
                 </div>
                 <div class="monitor-stats-row" style="margin-top:12px;">
                     <div class="monitor-stat">
-                        <div class="monitor-stat-value">${formatSeconds(sp ? sp.watched : 0)}</div>
+                        <div class="monitor-stat-value">' + formatSeconds(sp ? sp.watched : 0) + '</div>
                         <div class="monitor-stat-label">已观看</div>
                     </div>
                     <div class="monitor-stat">
-                        <div class="monitor-stat-value">${formatSeconds(video.duration)}</div>
+                        <div class="monitor-stat-value">' + formatSeconds(video.duration) + '</div>
                         <div class="monitor-stat-label">总时长</div>
                     </div>
                     <div class="monitor-stat">
-                        <div class="monitor-stat-value">${sp ? sp.lastWatched : '-'}</div>
+                        <div class="monitor-stat-value">' + sp ? sp.lastWatched : '-' + '</div>
                         <div class="monitor-stat-label">最后观看</div>
                     </div>
                 </div>
             </div>
-        `;
+        ';
     }).join('');
 
     document.getElementById('monitorCompleted').textContent = completed;
@@ -3898,16 +3908,16 @@ function renderMonitorPage() {
 }
 
 function formatSeconds(sec) {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return '' + m + ':' + s.toString().padStart(2, '0') + '';
 }
 
 // ===== 学生端 =====
 function showStudentPage(pageId) {
-    document.querySelectorAll('#studentApp .page').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('#studentApp .page').forEach(function(p) { return p.classList.add('hidden'; }));
     document.getElementById(pageId).classList.remove('hidden');
-    document.querySelectorAll('#studentApp .sidebar-nav .nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('#studentApp .sidebar-nav .nav-item').forEach(function(item) { return item.classList.remove('active'; }));
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
 
     if (pageId === 'studentClasses') { renderStudentClassPage(); updateAllStudentClassSelectors(); }
@@ -3918,54 +3928,54 @@ function showStudentPage(pageId) {
 }
 
 function initStudentDashboard() {
-    const studentId = 's1';
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = attendanceData[today] || {};
-    const myStatus = todayData[studentId];
+    var studentId = 's1';
+    var today = new Date().toISOString().split('T')[0];
+    var todayData = attendanceData[today] || {};
+    var myStatus = todayData[studentId];
 
     document.getElementById('studentCheckinStatus').textContent = myStatus === 'present' ? '已签到' : myStatus === 'late' ? '迟到' : '未签到';
-    document.getElementById('studentCheckinStatus').className = `badge ${myStatus === 'present' ? 'badge-success' : myStatus === 'late' ? 'badge-warning' : 'badge-info'}`;
+    document.getElementById('studentCheckinStatus').className = 'badge ' + myStatus === 'present' ? 'badge-success' : myStatus === 'late' ? 'badge-warning' : 'badge-info' + '';
 
     // 渲染最新作业
-    const hwContainer = document.getElementById('studentDashboardHomework');
-    hwContainer.innerHTML = homeworkData.slice(0, 2).map(hw => {
-        const sub = hw.submissions[studentId];
-        let statusBadge = '<span class="badge badge-warning">待完成</span>';
+    var hwContainer = document.getElementById('studentDashboardHomework');
+    hwContainer.innerHTML = homeworkData.slice(0, 2).map(function(hw) {
+        var sub = hw.submissions[studentId];
+        var statusBadge = '<span class="badge badge-warning">待完成</span>';
         if (sub) {
-            statusBadge = sub.graded ? `<span class="badge badge-success">已批改 ${sub.score}分</span>` : '<span class="badge badge-info">已提交</span>';
+            statusBadge = sub.graded ? '<span class="badge badge-success">已批改 ' + sub.score + '分</span>' : '<span class="badge badge-info">已提交</span>';
         }
-        return `
+        return '
             <div class="homework-item">
                 <div class="homework-header">
                     <div>
-                        <div class="homework-title">${hw.title}</div>
-                        <div class="homework-meta">截止: ${new Date(hw.deadline).toLocaleString('zh-CN')}</div>
+                        <div class="homework-title">' + hw.title + '</div>
+                        <div class="homework-meta">截止: ' + new Date(hw.deadline).toLocaleString('zh-CN') + '</div>
                     </div>
-                    ${statusBadge}
+                    ' + statusBadge + '
                 </div>
             </div>
-        `;
+        ';
     }).join('');
 
     // 渲染最近成绩
-    const gradesContainer = document.getElementById('studentRecentGrades');
-    const grades = [];
-    homeworkData.forEach(hw => {
+    var gradesContainer = document.getElementById('studentRecentGrades');
+    var grades = [];
+    homeworkData.forEach(function(hw) {
         if (hw.submissions[studentId] && hw.submissions[studentId].graded) {
             grades.push({ title: hw.title, score: hw.submissions[studentId].score });
         }
     });
 
-    gradesContainer.innerHTML = grades.slice(0, 3).map(g => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border);">
-            <span>${g.title}</span>
-            <span style="font-weight:700; color:var(--primary); font-size:1.2rem;">${g.score}分</span>
-        </div>
-    `).join('') || '<div class="empty-state">暂无成绩记录</div>';
+    gradesContainer.innerHTML = grades.slice(0, 3).map(function(g) {
+        return '<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border);">' +
+            '<span>' + g.title + '</span>' +
+            '<span style="font-weight:700; color:var(--primary); font-size:1.2rem;">' + g.score + '分</span>' +
+        '</div>';
+    }).join('') || '<div class="empty-state">暂无成绩记录</div>';
 }
 
 function studentCheckin() {
-    const input = document.getElementById('studentCheckinInput').value;
+    var input = document.getElementById('studentCheckinInput').value;
     if (!checkinCode) {
         showToast('当前没有进行中的签到', 'error');
         return;
@@ -3975,7 +3985,7 @@ function studentCheckin() {
         return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    var today = new Date().toISOString().split('T')[0];
     if (!attendanceData[today]) attendanceData[today] = {};
     attendanceData[today]['s1'] = 'present';
     saveStudentClassIsolatedData('attendanceData', attendanceData);
@@ -3988,91 +3998,92 @@ function studentCheckin() {
 }
 
 function renderStudentCheckinHistory() {
-    const tbody = document.getElementById('studentCheckinHistory');
+    var tbody = document.getElementById('studentCheckinHistory');
     if (!tbody) return;
-    const dates = Object.keys(attendanceData).sort().reverse();
+    var dates = Object.keys(attendanceData).sort().reverse();
 
-    tbody.innerHTML = dates.map(date => {
-        const status = attendanceData[date]['s1'];
+    tbody.innerHTML = dates.map(function(date) {
+        var status = attendanceData[date]['s1'];
         if (!status) return '';
-        let badge = '';
+        var badge = '';
         if (status === 'present') badge = '<span class="badge badge-success">已签到</span>';
         else if (status === 'late') badge = '<span class="badge badge-warning">迟到</span>';
         else badge = '<span class="badge badge-danger">缺勤</span>';
 
-        return `
+        return '
             <tr>
-                <td>${date}</td>
-                <td>${badge}</td>
+                <td>' + date + '</td>
+                <td>' + badge + '</td>
                 <td>08:30</td>
             </tr>
-        `;
+        ';
     }).join('') || '<tr><td colspan="3" style="text-align:center; color:var(--text-secondary);">暂无记录</td></tr>';
 }
 
 function renderStudentHomework() {
-    const studentId = 's1';
+    var studentId = 's1';
 
     // 待完成
-    const pending = homeworkData.filter(hw => !hw.submissions[studentId]);
-    document.getElementById('studentPendingHomework').innerHTML = pending.map(hw => `
-        <div class="homework-item">
-            <div class="homework-header">
-                <div>
-                    <div class="homework-title">${hw.title}</div>
-                    <div class="homework-meta">${hw.desc}</div>
-                    <div class="homework-meta" style="margin-top:4px; color:var(--danger);">截止: ${new Date(hw.deadline).toLocaleString('zh-CN')}</div>
-                </div>
-                <button class="btn btn-success btn-sm" onclick="openSubmitModal('${hw.id}')">去提交</button>
-            </div>
-        </div>
-    `).join('') || '<div class="empty-state">暂无待完成作业</div>';
+    var pending = homeworkData.filter(function(hw) { return !hw.submissions[studentId]; });
+    document.getElementById('studentPendingHomework').innerHTML = pending.map(function(hw) {
+        return '<div class="homework-item">' +
+            '<div class="homework-header">' +
+                '<div>' +
+                    '<div class="homework-title">' + hw.title + '</div>' +
+                    '<div class="homework-meta">' + hw.desc + '</div>' +
+                    '<div class="homework-meta" style="margin-top:4px; color:var(--danger);">截止: ' + new Date(hw.deadline).toLocaleString('zh-CN') + '</div>' +
+                '</div>' +
+                '<button class="btn btn-success btn-sm" onclick="openSubmitModal(\'' + hw.id + '\')">去提交</button>' +
+            '</div>' +
+        '</div>';
+    }).join('') || '<div class="empty-state">暂无待完成作业</div>';
 
     // 已提交
-    const submitted = homeworkData.filter(hw => hw.submissions[studentId] && !hw.submissions[studentId].graded);
-    document.getElementById('studentSubmittedHomework').innerHTML = submitted.map(hw => `
-        <div class="homework-item">
-            <div class="homework-header">
-                <div>
-                    <div class="homework-title">${hw.title}</div>
-                    <div class="homework-meta">提交时间: ${hw.submissions[studentId].submittedAt}</div>
-                </div>
-                <span class="badge badge-info">待批改</span>
-            </div>
-        </div>
-    `).join('') || '<div class="empty-state">暂无已提交作业</div>';
+    var submitted = homeworkData.filter(function(hw) { return hw.submissions[studentId] && !hw.submissions[studentId].graded; });
+    document.getElementById('studentSubmittedHomework').innerHTML = submitted.map(function(hw) {
+        return '<div class="homework-item">' +
+            '<div class="homework-header">' +
+                '<div>' +
+                    '<div class="homework-title">' + hw.title + '</div>' +
+                    '<div class="homework-meta">提交时间: ' + hw.submissions[studentId].submittedAt + '</div>' +
+                '</div>' +
+                '<span class="badge badge-info">待批改</span>' +
+            '</div>' +
+        '</div>';
+    }).join('') || '<div class="empty-state">暂无已提交作业</div>';
 
     // 已批改
-    const graded = homeworkData.filter(hw => hw.submissions[studentId] && hw.submissions[studentId].graded);
-    document.getElementById('studentGradedHomework').innerHTML = graded.map(hw => `
-        <div class="homework-item">
-            <div class="homework-header">
-                <div>
-                    <div class="homework-title">${hw.title}</div>
-                    <div class="homework-meta">提交时间: ${hw.submissions[studentId].submittedAt}</div>
-                </div>
-                <span class="badge badge-success">${hw.submissions[studentId].score}分</span>
-            </div>
-            ${hw.submissions[studentId].teacherComment ? `<div class="comment-box"><strong>教师评语:</strong> ${hw.submissions[studentId].teacherComment}</div>` : ''}
-        </div>
-    `).join('') || '<div class="empty-state">暂无已批改作业</div>';
+    var graded = homeworkData.filter(function(hw) { return hw.submissions[studentId] && hw.submissions[studentId].graded; });
+    document.getElementById('studentGradedHomework').innerHTML = graded.map(function(hw) {
+        var comment = hw.submissions[studentId].teacherComment;
+        return '<div class="homework-item">' +
+            '<div class="homework-header">' +
+                '<div>' +
+                    '<div class="homework-title">' + hw.title + '</div>' +
+                    '<div class="homework-meta">提交时间: ' + hw.submissions[studentId].submittedAt + '</div>' +
+                '</div>' +
+                '<span class="badge badge-success">' + hw.submissions[studentId].score + '分</span>' +
+            '</div>' +
+            (comment ? '<div class="comment-box"><strong>教师评语:</strong> ' + comment + '</div>' : '') +
+        '</div>';
+    }).join('') || '<div class="empty-state">暂无已批改作业</div>';
 }
 
 function openSubmitModal(hwId) {
     currentSubmitHomework = hwId;
-    const hw = homeworkData.find(h => h.id === hwId);
-    document.getElementById('submitHwInfo').innerHTML = `
-        <p><strong>作业:</strong> ${hw.title}</p>
-        <p><strong>要求:</strong> ${hw.desc}</p>
+    var hw = homeworkData.find(function(h) { return h.id === hwId; });
+    document.getElementById('submitHwInfo').innerHTML = '
+        <p><strong>作业:</strong> ' + hw.title + '</p>
+        <p><strong>要求:</strong> ' + hw.desc + '</p>
         <hr style="margin:16px 0; border:none; border-top:1px solid var(--border);">
-    `;
+    ';
     document.getElementById('selectedFile').style.display = 'none';
     document.getElementById('submitComment').value = '';
     showModal('submitHomeworkModal');
 }
 
 function handleFileSelect(event) {
-    const file = event.target.files[0];
+    var file = event.target.files[0];
     if (file) {
         document.getElementById('fileName').textContent = file.name;
         document.getElementById('selectedFile').style.display = 'block';
@@ -4081,7 +4092,7 @@ function handleFileSelect(event) {
 
 function submitHomework() {
     if (!currentSubmitHomework) return;
-    const hw = homeworkData.find(h => h.id === currentSubmitHomework);
+    var hw = homeworkData.find(function(h) { return h.id === currentSubmitHomework; });
     if (hw) {
         hw.submissions['s1'] = {
             submittedAt: new Date().toLocaleString('zh-CN'),
@@ -4097,11 +4108,11 @@ function submitHomework() {
 }
 
 function renderStudentGrades() {
-    const studentId = 's1';
-    const tbody = document.getElementById('studentGradeTable');
-    const grades = [];
+    var studentId = 's1';
+    var tbody = document.getElementById('studentGradeTable');
+    var grades = [];
 
-    homeworkData.forEach(hw => {
+    homeworkData.forEach(function(hw) {
         if (hw.submissions[studentId] && hw.submissions[studentId].graded) {
             grades.push({
                 title: hw.title,
@@ -4112,67 +4123,68 @@ function renderStudentGrades() {
         }
     });
 
-    tbody.innerHTML = grades.map(g => `
-        <tr>
-            <td>${g.title}</td>
-            <td>${g.submittedAt}</td>
-            <td><span class="badge ${g.score >= 90 ? 'badge-success' : g.score >= 80 ? 'badge-info' : 'badge-warning'}">${g.score}</span></td>
-            <td>${g.comment}</td>
-        </tr>
-    `).join('') || '<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">暂无成绩记录</td></tr>';
+    tbody.innerHTML = grades.map(function(g) {
+        var badgeClass = g.score >= 90 ? 'badge-success' : (g.score >= 80 ? 'badge-info' : 'badge-warning');
+        return '<tr>' +
+            '<td>' + g.title + '</td>' +
+            '<td>' + g.submittedAt + '</td>' +
+            '<td><span class="badge ' + badgeClass + '">' + g.score + '</span></td>' +
+            '<td>' + g.comment + '</td>' +
+        '</tr>';
+    }).join('') || '<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">暂无成绩记录</td></tr>';
 
     // 成绩趋势图
-    const trend = document.getElementById('gradeTrend');
-    trend.innerHTML = grades.slice(-6).map(g => `
-        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-            <div style="width:40px; background:var(--primary); border-radius:4px 4px 0 0; height:${g.score * 1.5}px; opacity:0.8;"></div>
-            <span style="font-size:0.75rem; color:var(--text-secondary);">${g.score}</span>
-        </div>
-    `).join('');
+    var trend = document.getElementById('gradeTrend');
+    trend.innerHTML = grades.slice(-6).map(function(g) {
+        return '<div style="display:flex; flex-direction:column; align-items:center; gap:8px;">' +
+            '<div style="width:40px; background:var(--primary); border-radius:4px 4px 0 0; height:' + g.score * 1.5 + 'px; opacity:0.8;"></div>' +
+            '<span style="font-size:0.75rem; color:var(--text-secondary);">' + g.score + '</span>' +
+        '</div>';
+    }).join('');
 }
 
 // 学生端 - 视频学习
 function renderLearningResources() {
-    const container = document.getElementById('learningResources');
-    const studentId = 's1';
+    var container = document.getElementById('learningResources');
+    var studentId = 's1';
 
-    container.innerHTML = videoData.map(v => {
-        const sp = ((videoProgressData[studentId] || {})[v.id]) || {};
-        const progress = v.duration > 0 ? Math.min(100, Math.round((sp.watched || 0) / v.duration * 100)) : 0;
-        let statusBadge = '<span class="badge badge-danger">未开始</span>';
+    container.innerHTML = videoData.map(function(v) {
+        var sp = ((videoProgressData[studentId] || {})[v.id]) || {};
+        var progress = v.duration > 0 ? Math.min(100, Math.round((sp.watched || 0) / v.duration * 100)) : 0;
+        var statusBadge = '<span class="badge badge-danger">未开始</span>';
         if (sp.completed) statusBadge = '<span class="badge badge-success">已完成</span>';
         else if (progress > 0) statusBadge = '<span class="badge badge-warning">学习中 ' + progress + '%</span>';
 
-        return `
+        return '
             <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:var(--bg-primary); border-radius:var(--radius-sm); margin-bottom:12px;">
                 <div style="flex:1;">
                     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
                         <svg width="20" height="20" fill="none" stroke="var(--primary)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span style="font-weight:600;">${v.title}</span>
-                        ${statusBadge}
+                        <span style="font-weight:600;">' + v.title + '</span>
+                        ' + statusBadge + '
                     </div>
-                    <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:8px;">${v.desc}</div>
+                    <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:8px;">' + v.desc + '</div>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div class="progress-bar" style="flex:1; height:6px;">
-                            <div class="progress-fill" style="width:${progress}%; background:${sp.completed ? 'var(--success)' : 'var(--accent)'};"></div>
+                            <div class="progress-fill" style="width:' + progress + '%; background:' + sp.completed ? 'var(--success)' : 'var(--accent)' + ';"></div>
                         </div>
-                        <span style="font-size:0.8rem; color:var(--text-secondary); min-width:70px; text-align:right;">${progress}% · ${formatSeconds(v.duration)}</span>
+                        <span style="font-size:0.8rem; color:var(--text-secondary); min-width:70px; text-align:right;">' + progress + '% · ' + formatSeconds(v.duration) + '</span>
                     </div>
                 </div>
-                <button class="btn ${sp.completed ? 'btn-outline' : 'btn-success'} btn-sm" style="margin-left:16px;" onclick="playVideo('${v.id}')">
-                    ${sp.completed ? '重新观看' : progress > 0 ? '继续观看' : '开始观看'}
+                <button class="btn ' + sp.completed ? 'btn-outline' : 'btn-success' + ' btn-sm" style="margin-left:16px;" onclick="playVideo('' + v.id + '')">
+                    ' + sp.completed ? '重新观看' : progress > 0 ? '继续观看' : '开始观看' + '
                 </button>
             </div>
-        `;
+        ';
     }).join('') || '<div class="empty-state">暂无学习视频，请等待教师上传</div>';
 }
 
 function playVideo(videoId) {
-    const video = videoData.find(v => v.id === videoId);
+    var video = videoData.find(function(v) { return v.id === videoId; });
     if (!video) return;
 
     currentPlayingVideoId = videoId;
-    const studentId = 's1';
+    var studentId = 's1';
 
     document.getElementById('videoListArea').style.display = 'none';
     document.getElementById('videoPlayerCard').style.display = 'block';
@@ -4180,11 +4192,11 @@ function playVideo(videoId) {
     document.getElementById('learningStatus').textContent = '学习中';
     document.getElementById('learningStatus').className = 'badge badge-success';
 
-    const videoEl = document.getElementById('learningVideo');
+    var videoEl = document.getElementById('learningVideo');
     if (video.url) {
         videoEl.src = video.url;
         // 恢复上次观看位置
-        const sp = ((videoProgressData[studentId] || {})[videoId]) || {};
+        var sp = ((videoProgressData[studentId] || {})[videoId]) || {};
         if (sp.watched) {
             videoEl.currentTime = sp.watched;
         }
@@ -4200,16 +4212,16 @@ function playVideo(videoId) {
 }
 
 function simulateVideoPlayback(video) {
-    const studentId = 's1';
+    var studentId = 's1';
     if (!videoProgressData[studentId]) videoProgressData[studentId] = {};
     if (!videoProgressData[studentId][video.id]) {
         videoProgressData[studentId][video.id] = { watched: 0, completed: false, lastWatched: new Date().toISOString().split('T')[0] };
     }
 
     if (window._simInterval) clearInterval(window._simInterval);
-    window._simInterval = setInterval(() => {
+    window._simInterval = setInterval(function() {
         if (currentPlayingVideoId !== video.id) { clearInterval(window._simInterval); return; }
-        const sp = videoProgressData[studentId][video.id];
+        var sp = videoProgressData[studentId][video.id];
         if (sp.completed) { clearInterval(window._simInterval); return; }
 
         sp.watched = Math.min(video.duration, sp.watched + 5);
@@ -4228,20 +4240,20 @@ function simulateVideoPlayback(video) {
 }
 
 function onVideoTimeUpdate() {
-    const videoEl = document.getElementById('learningVideo');
-    const videoId = currentPlayingVideoId;
+    var videoEl = document.getElementById('learningVideo');
+    var videoId = currentPlayingVideoId;
     if (!videoId || !videoEl.duration) return;
 
-    const video = videoData.find(v => v.id === videoId);
+    var video = videoData.find(function(v) { return v.id === videoId; });
     if (!video) return;
 
-    const studentId = 's1';
+    var studentId = 's1';
     if (!videoProgressData[studentId]) videoProgressData[studentId] = {};
     if (!videoProgressData[studentId][videoId]) {
         videoProgressData[studentId][videoId] = { watched: 0, completed: false, lastWatched: new Date().toISOString().split('T')[0] };
     }
 
-    const sp = videoProgressData[studentId][videoId];
+    var sp = videoProgressData[studentId][videoId];
     sp.watched = Math.floor(videoEl.currentTime);
     sp.lastWatched = new Date().toISOString().split('T')[0];
 
@@ -4256,15 +4268,15 @@ function onVideoTimeUpdate() {
 }
 
 function onVideoEnded() {
-    const videoId = currentPlayingVideoId;
+    var videoId = currentPlayingVideoId;
     if (!videoId) return;
-    const studentId = 's1';
+    var studentId = 's1';
     if (!videoProgressData[studentId]) videoProgressData[studentId] = {};
     if (!videoProgressData[studentId][videoId]) {
         videoProgressData[studentId][videoId] = { watched: 0, completed: false, lastWatched: '' };
     }
     videoProgressData[studentId][videoId].completed = true;
-    const video = videoData.find(v => v.id === videoId);
+    var video = videoData.find(function(v) { return v.id === videoId; });
     if (video) videoProgressData[studentId][videoId].watched = video.duration;
     videoProgressData[studentId][videoId].lastWatched = new Date().toISOString().split('T')[0];
     saveStudentClassIsolatedData('videoProgressData', videoProgressData);
@@ -4274,10 +4286,10 @@ function onVideoEnded() {
 }
 
 function updateVideoProgressUI(video) {
-    const studentId = 's1';
-    const sp = ((videoProgressData[studentId] || {})[video.id]) || {};
-    const watched = sp.watched || 0;
-    const progress = video.duration > 0 ? Math.min(100, Math.round((watched / video.duration) * 100)) : 0;
+    var studentId = 's1';
+    var sp = ((videoProgressData[studentId] || {})[video.id]) || {};
+    var watched = sp.watched || 0;
+    var progress = video.duration > 0 ? Math.min(100, Math.round((watched / video.duration) * 100)) : 0;
 
     document.getElementById('videoProgressText').textContent = progress + '%';
     document.getElementById('videoProgressBar').style.width = progress + '%';
@@ -4287,7 +4299,7 @@ function updateVideoProgressUI(video) {
 
 function closeVideoPlayer() {
     if (window._simInterval) clearInterval(window._simInterval);
-    const videoEl = document.getElementById('learningVideo');
+    var videoEl = document.getElementById('learningVideo');
     videoEl.pause();
     videoEl.removeAttribute('src');
     videoEl.load();
@@ -4303,7 +4315,7 @@ function closeVideoPlayer() {
 
 // 教师上传视频
 function handleVideoFileSelect(event) {
-    const file = event.target.files[0];
+    var file = event.target.files[0];
     if (file) {
         selectedVideoFile = file;
         document.getElementById('videoFileName').textContent = file.name;
@@ -4312,15 +4324,15 @@ function handleVideoFileSelect(event) {
 }
 
 function uploadVideo() {
-    const title = document.getElementById('videoTitle').value;
-    const desc = document.getElementById('videoDesc').value;
+    var title = document.getElementById('videoTitle').value;
+    var desc = document.getElementById('videoDesc').value;
 
     if (!title) {
         showToast('请输入视频标题', 'error');
         return;
     }
 
-    const newVideo = {
+    var newVideo = {
         id: 'v' + Date.now(),
         title: title,
         desc: desc || '暂无描述',
@@ -4331,16 +4343,16 @@ function uploadVideo() {
 
     // 如果有文件，创建本地URL
     if (selectedVideoFile) {
-        const url = URL.createObjectURL(selectedVideoFile);
+        var url = URL.createObjectURL(selectedVideoFile);
         newVideo.url = url;
         // 获取视频时长
-        const tempVideo = document.createElement('video');
+        var tempVideo = document.createElement('video');
         tempVideo.preload = 'metadata';
         tempVideo.src = url;
-        tempVideo.onloadedmetadata = () => {
+        tempVideo.onloadedmetadata = function() {
             newVideo.duration = Math.floor(tempVideo.duration);
             videoData.push(newVideo);
-            saveClassIsolatedData('videoData', videoData.map(v => ({...v, url: ''}))); // 不存blob URL
+            saveClassIsolatedData('videoData', videoData.map(function(v) { return ({...v, url: ''}; }))); // 不存blob URL
             hideModal('uploadVideoModal');
             renderMonitorPage();
             showToast('视频发布成功！', 'success');
@@ -4361,16 +4373,16 @@ function uploadVideo() {
 
 // ===== 通用工具 =====
 function switchTab(tab, contentId) {
-    tab.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.parentElement.querySelectorAll('.tab').forEach(function(t) { return t.classList.remove('active'; }));
     tab.classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(function(c) { return c.classList.remove('active'; }));
     document.getElementById(contentId).classList.add('active');
 }
 
 function switchStudentTab(tab, contentId) {
-    tab.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.parentElement.querySelectorAll('.tab').forEach(function(t) { return t.classList.remove('active'; }));
     tab.classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(function(c) { return c.classList.remove('active'; }));
     document.getElementById(contentId).classList.add('active');
 }
 
@@ -4383,15 +4395,15 @@ function hideModal(modalId) {
 }
 
 function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
+    var toast = document.getElementById('toast');
     toast.textContent = message;
-    toast.className = `toast ${type} show`;
-    setTimeout(() => toast.classList.remove('show'), 3000);
+    toast.className = 'toast ' + type + ' show';
+    setTimeout(function() { toast.classList.remove('show'); }, 3000);
 }
 
 // 点击模态框外部关闭
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
         if (e.target === overlay) overlay.classList.remove('active');
     });
 });
