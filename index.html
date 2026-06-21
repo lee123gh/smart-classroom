@@ -2684,7 +2684,7 @@ function renderStudentClassPage() {
                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         加入时间: ' + jc.joinedAt + '
                     </span>
-                    ${cls ? '<span>${cls.students.length} 名学生</span>' : ''}
+                    ' + (cls ? '<span>' + cls.students.length + ' 名学生</span>' : '') + '
                 </div>
                 <div class="class-card-actions">
                     <button class="btn btn-success btn-sm" onclick="enterStudentClass('' + jc.classId + '')">进入课堂</button>
@@ -3733,9 +3733,9 @@ function viewSubmissions(hwId) {
                     <td>' + s.name + '</td>
                     <td><span class="badge badge-success">已提交</span></td>
                     <td>' + sub.submittedAt + '</td>
-                    <td>' + sub.score !== undefined ? sub.score : '-' + '</td>
+                    <td>' + (sub.score !== undefined ? sub.score : '-') + '</td>
                     <td>
-                        ${!sub.graded ? '<button class="btn btn-success btn-sm" onclick="openGradeModal('${hwId}', '${s.id}')">批改</button>' : '<span class="badge badge-info">已批改</span>'}
+                        ' + (!sub.graded ? '<button class="btn btn-success btn-sm" onclick="openGradeModal(\'' + hwId + '\', \'' + s.id + '\')">批改</button>' : '<span class="badge badge-info">已批改</span>') + '
                     </td>
                 </tr>
             ';
@@ -3811,8 +3811,8 @@ function openGradeModal(hwId, studentId) {
         <p><strong>作业:</strong> ' + hw.title + '</p>
         <p><strong>学生:</strong> ' + student.name + '</p>
         <p><strong>提交时间:</strong> ' + sub.submittedAt + '</p>
-        ${sub.fileName ? '<p><strong>附件:</strong> ${sub.fileName}</p>' : ''}
-        ${sub.comment ? '<p><strong>学生备注:</strong> ${sub.comment}</p>' : ''}
+        ' + (sub.fileName ? '<p><strong>附件:</strong> ' + sub.fileName + '</p>' : '') + '
+        ' + (sub.comment ? '<p><strong>学生备注:</strong> ' + sub.comment + '</p>' : '') + '
         <hr style="margin:16px 0; border:none; border-top:1px solid var(--border);">
     ';
 
