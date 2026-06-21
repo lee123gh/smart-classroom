@@ -2213,6 +2213,23 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// Edge兼容polyfill
+if (!Array.prototype.find) {
+    Array.prototype.find = function(predicate) {
+        if (this == null) throw new TypeError('find called on null or undefined');
+        if (typeof predicate !== 'function') throw new TypeError('predicate must be a function');
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+        for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) return value;
+        }
+        return undefined;
+    };
+}
+
 // ===== 数据层 =====
 var defaultStudents = [
     { id: 's1', name: '李明', avatar: '李' },
@@ -2951,7 +2968,8 @@ function initTeacherDashboard() {
 function updateStats() {
     var today = new Date().toISOString().split('T')[0];
     var todayData = attendanceData[today] || {};
-    var present = Object.values(todayData).filter(function(s) { return s === 'present'; }).length;
+    var present = 0;
+    for (var k in todayData) { if (todayData[k] === 'present') present++; }
     var total = students.length;
     var rate = total > 0 ? Math.round((present / total) * 100) : 0;
     document.getElementById('todayAttendance').textContent = rate + '%';
@@ -3097,9 +3115,12 @@ function renderCheckinHistory() {
 
     tbody.innerHTML = dates.map(function(date) {
         var data = attendanceData[date];
-        var present = Object.values(data).filter(function(s) { return s === 'present'; }).length;
-        var late = Object.values(data).filter(function(s) { return s === 'late'; }).length;
-        var absent = Object.values(data).filter(function(s) { return s === 'absent'; }).length;
+        var present = 0, late = 0, absent = 0;
+        for (var k in data) {
+            if (data[k] === 'present') present++;
+            else if (data[k] === 'late') late++;
+            else if (data[k] === 'absent') absent++;
+        }
         var total = students.length;
         var rate = Math.round((present / total) * 100);
 
@@ -3307,7 +3328,7 @@ function processRosterContent(content, fileName) {
         // 合并导入的考勤数据
         Object.keys(importedAttendance).forEach(function(date) {
             if (!attendanceData[date]) attendanceData[date] = {};
-            Object.assign(attendanceData[date], importedAttendance[date]);
+            for (var ik in importedAttendance[date]) { attendanceData[date][ik] = importedAttendance[date][ik]; }
         });
         saveCurrentClassData();
 
@@ -3619,7 +3640,8 @@ function renderHomeworkPage() {
     var container = document.getElementById('homeworkListContainer');
     container.innerHTML = homeworkData.map(function(hw) {
         var submitted = Object.keys(hw.submissions).length;
-        var graded = Object.values(hw.submissions).filter(function(s) { return s.graded; }).length;
+        var graded = 0;
+        for (var sk in hw.submissions) { if (hw.submissions[sk].graded) graded++; }
         var total = students.length;
         var progress = Math.round((submitted / total) * 100);
 
