@@ -4423,7 +4423,8 @@ function hideModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
 }
 
-function showToast(message, type = 'success') {
+function showToast(message, type) {
+    if (!type) type = 'success';
     var toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = 'toast ' + type + ' show';
