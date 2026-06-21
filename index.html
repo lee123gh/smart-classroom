@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #1a5f4a;
@@ -1513,8 +1514,8 @@
                                 <div class="submit-area" id="rosterUploadArea" onclick="document.getElementById('rosterFileInput').click()">
                                     <svg width="48" height="48" fill="none" stroke="var(--text-secondary)" viewBox="0 0 24 24" style="margin-bottom:12px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                                     <p style="color:var(--text-secondary);">点击上传考勤表文件</p>
-                                    <p style="color:var(--text-muted); font-size:0.85rem; margin-top:8px;">支持 CSV、TXT 格式（Excel请另存为CSV）</p>
-                                    <input type="file" id="rosterFileInput" style="display:none;" accept=".csv,.txt" onchange="handleRosterUpload(event)">
+                                    <p style="color:var(--text-muted); font-size:0.85rem; margin-top:8px;">支持 Excel（.xlsx/.xls）、CSV、TXT 格式</p>
+                                    <input type="file" id="rosterFileInput" style="display:none;" accept=".csv,.txt,.xlsx,.xls,.xlsm" onchange="handleRosterUpload(event)">
                                 </div>
                                 <div id="rosterFileInfo" style="margin-top:16px; display:none;">
                                     <div style="background:var(--bg-primary); padding:12px; border-radius:var(--radius-sm); display:flex; align-items:center; gap:12px;">
@@ -3142,20 +3143,39 @@ function renderPersonalStats() {
 
 // 考勤名单上传 - 支持带考勤数据的表格导入
 function handleRosterUpload(event) {
-    const file = event.target.files[0];
+    var file = event.target.files[0];
     if (!file) return;
 
-    // 检测Excel文件
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.xlsm');
+    // 检测Excel文件，使用SheetJS解析
+    var isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.xlsm');
     if (isExcel) {
-        showToast('请先将Excel文件另存为CSV格式再上传', 'error');
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var data = new Uint8Array(e.target.result);
+                var workbook = XLSX.read(data, { type: 'array' });
+                var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                // 将Excel转为CSV文本，复用后续解析逻辑
+                var csvContent = XLSX.utils.sheet_to_csv(firstSheet);
+                processRosterContent(csvContent, file.name);
+            } catch (err) {
+                showToast('Excel文件解析失败：' + err.message, 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
         return;
     }
 
-    const reader = new FileReader();
+    var reader = new FileReader();
     reader.onload = function(e) {
-        let content = e.target.result;
-        
+        var content = e.target.result;
+        processRosterContent(content, file.name);
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
+// 处理解析后的文本内容（CSV/TXT/Excel转CSV）
+function processRosterContent(content, fileName) {
         // 修复乱码：检测并移除 UTF-8 BOM
         if (content.charCodeAt(0) === 0xFEFF) {
             content = content.substring(1);
@@ -3290,7 +3310,7 @@ function handleRosterUpload(event) {
         saveCurrentClassData();
 
         // 更新上传信息展示
-        document.getElementById('rosterFileName').textContent = file.name;
+        document.getElementById('rosterFileName').textContent = fileName;
         document.getElementById('rosterStudentCount').textContent = students.length;
         document.getElementById('rosterFileInfo').style.display = 'block';
 
