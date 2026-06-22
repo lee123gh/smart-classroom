@@ -3287,12 +3287,12 @@ function processRosterContent(content, fileName) {
                 }
             }
         } else {
-            // 纯名单格式：每行一个姓名
-            lines.forEach(function(line, idx) {
+            // 纯名单格式：每行一个姓名，跳过第一行（表头）
+            lines.slice(1).forEach(function(line, idx) {
                 var names = line.indexOf(',') !== -1 ? line.split(',').map(function(n) { return n.trim(); }) : [line];
                 names.forEach(function(name) {
                     name = isValidStudentName(name);
-                    if (!name || name === '姓名' || name === 'name' || name === '学生') return;
+                    if (!name || name === '姓名' || name === 'name' || name === '学生' || name === '学号' || name === '序号') return;
                     
                     newStudents.push({
                         id: 's' + Date.now() + '_' + idx,
