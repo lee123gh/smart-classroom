@@ -2264,6 +2264,48 @@ var teacherCurrentClassId = localStorage.getItem('teacherCurrentClassId') || '';
 var studentJoinedClasses = JSON.parse(localStorage.getItem('studentJoinedClasses')) || [];
 var studentCurrentClassId = localStorage.getItem('studentCurrentClassId') || '';
 
+// 通用：判断是否为有效学生姓名（全局函数）
+function isValidStudentName(name) {
+    if (!name || typeof name !== 'string') return false;
+    name = name.trim();
+    if (name.length < 2 || name.length > 20) return false;
+    
+    // 过滤XML标签
+    if (name.indexOf('<?xml') === 0 || name.indexOf('<') === 0 || name.indexOf('xmlns') !== -1) return false;
+    
+    // 过滤URL/命名空间
+    if (name.indexOf('schemas-microsoft') !== -1 || name.indexOf('http://') !== -1 || 
+        name.indexOf('urn:') !== -1 || name.indexOf('REC-') !== -1) return false;
+    
+    // 过滤CSS属性（根据截图中的实际乱码内容）
+    var cssPatterns = [
+        'font-weight:', 'font-style:', 'font-family:', 'font-size:',
+        'color:', 'background:', 'border:', 'padding-', 'margin-',
+        'text-align:', 'white-space:', 'vertical-align:', 'line-height:',
+        'display:', 'position:', 'float:', 'clear:',
+        'width:', 'height:', 'min-', 'max-',
+        'overflow:', 'visibility:', 'z-index:',
+        'table', 'tr ', 'tr{', 'td ', 'td{', 'th ', 'th{',
+        'col ', 'col{', 'br ', 'br{', 'div ', 'div{', 'span ', 'span{',
+        '.font', '#font', '@page', '@media', '@import',
+        'mso-', 'windowtext', '10.0pt', 'stylesheet',
+        'style=', 'class=', 'id=', 'name='
+    ];
+    for (var pi = 0; pi < cssPatterns.length; pi++) {
+        if (name.indexOf(cssPatterns[pi]) !== -1) return false;
+    }
+    
+    // 过滤包含CSS代码特征的行（冒号+分号 或 花括号）
+    if ((name.indexOf(':') !== -1 && name.indexOf(';') !== -1) || 
+        (name.indexOf('{') !== -1 || name.indexOf('}') !== -1)) return false;
+    
+    // 过滤XML/HTML残留
+    name = name.replace(/<[^>]+>/g, '').trim();
+    if (!name || name.length < 2) return false;
+    
+    return name;
+}
+
 // 自动清理乱码学生数据（检测XML/CSS/代码残留）
 function cleanGarbledStudentData() {
     var cleaned = false;
@@ -3214,48 +3256,6 @@ function processRosterContent(content, fileName) {
         var newStudents = [];
         var importedAttendance = {}; // date -> {studentId -> status}
         
-        // 通用：判断是否为有效学生姓名
-        function isValidStudentName(name) {
-            if (!name || typeof name !== 'string') return false;
-            name = name.trim();
-            if (name.length < 2 || name.length > 20) return false;
-            
-            // 过滤XML标签
-            if (name.indexOf('<?xml') === 0 || name.indexOf('<') === 0 || name.indexOf('xmlns') !== -1) return false;
-            
-            // 过滤URL/命名空间
-            if (name.indexOf('schemas-microsoft') !== -1 || name.indexOf('http://') !== -1 || 
-                name.indexOf('urn:') !== -1 || name.indexOf('REC-') !== -1) return false;
-            
-            // 过滤CSS属性（根据截图中的实际乱码内容）
-            var cssPatterns = [
-                'font-weight:', 'font-style:', 'font-family:', 'font-size:',
-                'color:', 'background:', 'border:', 'padding-', 'margin-',
-                'text-align:', 'white-space:', 'vertical-align:', 'line-height:',
-                'display:', 'position:', 'float:', 'clear:',
-                'width:', 'height:', 'min-', 'max-',
-                'overflow:', 'visibility:', 'z-index:',
-                'table', 'tr ', 'tr{', 'td ', 'td{', 'th ', 'th{',
-                'col ', 'col{', 'br ', 'br{', 'div ', 'div{', 'span ', 'span{',
-                '.font', '#font', '@page', '@media', '@import',
-                'mso-', 'windowtext', '10.0pt', 'stylesheet',
-                'style=', 'class=', 'id=', 'name='
-            ];
-            for (var pi = 0; pi < cssPatterns.length; pi++) {
-                if (name.indexOf(cssPatterns[pi]) !== -1) return false;
-            }
-            
-            // 过滤包含CSS代码特征的行（冒号+分号 或 花括号）
-            if ((name.indexOf(':') !== -1 && name.indexOf(';') !== -1) || 
-                (name.indexOf('{') !== -1 || name.indexOf('}') !== -1)) return false;
-            
-            // 过滤XML/HTML残留
-            name = name.replace(/<[^>]+>/g, '').trim();
-            if (!name || name.length < 2) return false;
-            
-            return name;
-        }
-
         if (isAttendanceSheet) {
             // 考勤表格式：姓名,日期1,日期2,...
             var dateHeaders = headers.slice(1);
