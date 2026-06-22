@@ -3248,171 +3248,143 @@ function processRosterContent(content, fileName) {
 
         // ====== 智能解析：自动识别表格结构 ======
         
-        // 第一步：解析所有行为CSV单元格
-        var allRows = [];
-        for (var ri = 0; ri < lines.length; ri++) {
-            allRows.push(parseCSVLine(lines[ri]));
-        }
-        
-        // 第二步：找到表头行（包含"学号"或"姓名"关键字的行）
-        var headerRowIndex = -1;
-        var nameColIndex = -1;
-        var idColIndex = -1;
-        var dateColIndices = [];
-        
-        // 已知的表头关键字
-        var headerKeywords = ['学号', '姓名', '名字', '学生姓名', '序号', '编号', '平时成绩', '总评', '考勤', '签到', '出勤'];
-        var dateRegex = /^\d{1,2}[-\/]\d{1,2}|\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/;
-        
-        for (var hi = 0; hi < Math.min(allRows.length, 10); hi++) {
-            var row = allRows[hi];
-            var keywordCount = 0;
-            for (var ci = 0; ci < row.length; ci++) {
-                var cell = row[ci].trim();
-                for (var ki = 0; ki < headerKeywords.length; ki++) {
-                    if (cell.indexOf(headerKeywords[ki]) !== -1) {
-                        keywordCount++;
-                        // 记录列位置
-                        if (cell === '姓名' || cell === '名字' || cell === '学生姓名') {
-                            nameColIndex = ci;
-                        }
-                        if (cell === '学号' || cell === '编号') {
-                            idColIndex = ci;
-                        }
-                        break;
-                    }
-                }
-            }
-            // 如果一行中有2个以上关键字，认为是表头行
-            if (keywordCount >= 2) {
-                headerRowIndex = hi;
-                break;
-            }
-        }
-        
-        // 第三步：如果没有找到标准表头，尝试其他策略
-        if (headerRowIndex === -1) {
-            // 策略A：检查是否是制表符分隔的Excel复制数据
-            var tabLines = content.split(/\r?\n/).filter(function(l) { return l.trim().length > 0; });
-            var hasTabs = false;
-            for (var ti = 0; ti < Math.min(tabLines.length, 5); ti++) {
-                if (tabLines[ti].indexOf('\t') !== -1) { hasTabs = true; break; }
-            }
-            
-            if (hasTabs) {
-                // 重新按制表符解析
-                allRows = [];
-                for (var tli = 0; tli < tabLines.length; tli++) {
-                    allRows.push(tabLines[tli].split('\t').map(function(c) { return c.trim(); }));
-                }
-                // 重新查找表头
-                for (var thi = 0; thi < Math.min(allRows.length, 10); thi++) {
-                    var trow = allRows[thi];
-                    var tkc = 0;
-                    for (var tci = 0; tci < trow.length; tci++) {
-                        var tcell = trow[tci];
-                        for (var tki = 0; tki < headerKeywords.length; tki++) {
-                            if (tcell.indexOf(headerKeywords[tki]) !== -1) { tkc++; break; }
-                        }
-                    }
-                    if (tkc >= 2) { headerRowIndex = thi; break; }
-                }
-            }
-        }
-        
-        // 第四步：如果还是没有表头，检查数据行特征（学号是11-12位数字）
-        if (headerRowIndex === -1) {
-            for (var di = 0; di < Math.min(allRows.length, 10); di++) {
-                var drow = allRows[di];
-                for (var dci = 0; dci < drow.length; dci++) {
-                    var dcell = drow[dci].trim();
-                    if (/^\d{10,13}$/.test(dcell)) {
-                        // 找到学号列
-                        idColIndex = dci;
-                        // 姓名通常在学号旁边
-                        if (dci + 1 < drow.length && isValidStudentName(drow[dci + 1].trim())) {
-                            nameColIndex = dci + 1;
-                        } else if (dci > 0 && isValidStudentName(drow[dci - 1].trim())) {
-                            nameColIndex = dci - 1;
-                        }
-                        headerRowIndex = di; // 用找到学号的行作为起始行
-                        break;
-                    }
-                }
-                if (idColIndex !== -1) break;
-            }
-        }
-        
-        // 第五步：如果找到表头行，精确识别列
-        if (headerRowIndex !== -1) {
-            var headerRow = allRows[headerRowIndex];
-            for (var hci = 0; hci < headerRow.length; hci++) {
-                var hcell = headerRow[hci].trim();
-                // 识别姓名列
-                if (nameColIndex === -1 && (hcell === '姓名' || hcell === '名字' || hcell === '学生姓名' || hcell === '学生')) {
-                    nameColIndex = hci;
-                }
-                // 识别学号列
-                if (idColIndex === -1 && (hcell === '学号' || hcell === '编号' || hcell === '序号')) {
-                    idColIndex = hci;
-                }
-                // 识别日期列
-                if (dateRegex.test(hcell)) {
-                    dateColIndices.push(hci);
-                }
-                // "平时成绩"等包含日期的列标题
-                if (hcell.indexOf('平时') !== -1 || hcell.indexOf('总评') !== -1 || hcell.indexOf('成绩') !== -1) {
-                    // 跳过成绩列
-                }
-            }
-        }
-        
-        // 第六步：解析学生数据
         var newStudents = [];
         var importedAttendance = {};
-        var startRow = (headerRowIndex !== -1) ? headerRowIndex + 1 : 0;
         
-        // 如果没有找到姓名列和学号列，回退到简单模式
-        if (nameColIndex === -1 && idColIndex === -1) {
-            // 简单模式：每行一个姓名
-            for (var si = startRow; si < allRows.length; si++) {
-                var srow = allRows[si];
-                for (var sci = 0; sci < srow.length; sci++) {
-                    var sname = isValidStudentName(srow[sci].trim());
-                    if (sname) {
-                        newStudents.push({
-                            id: 's' + Date.now() + '_' + si + '_' + sci,
-                            name: sname,
-                            avatar: sname.charAt(0)
-                        });
+        // 检测是否是HTML表格格式（Excel导出的HTML）
+        var isHtmlTable = content.indexOf('<table') !== -1 || content.indexOf('<tr') !== -1;
+        
+        if (isHtmlTable) {
+            // ===== HTML表格解析 =====
+            var rows = [];
+            var trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+            var tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+            var trMatch;
+            
+            while ((trMatch = trRegex.exec(content)) !== null) {
+                var rowHtml = trMatch[1];
+                var cells = [];
+                var tdMatch;
+                
+                while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
+                    // 提取纯文本（去除HTML标签）
+                    var cellText = tdMatch[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+                    cells.push(cellText);
+                }
+                
+                if (cells.length > 0) {
+                    rows.push(cells);
+                }
+            }
+            
+            // 查找表头行
+            var headerRowIndex = -1;
+            var nameColIndex = -1;
+            var idColIndex = -1;
+            
+            for (var hi = 0; hi < Math.min(rows.length, 15); hi++) {
+                var row = rows[hi];
+                for (var ci = 0; ci < row.length; ci++) {
+                    var cell = row[ci];
+                    if (cell === '姓名' || cell === '名字' || cell === '学生姓名') {
+                        nameColIndex = ci;
+                        headerRowIndex = hi;
                     }
+                    if (cell === '学号' || cell === '编号') {
+                        idColIndex = ci;
+                        headerRowIndex = hi;
+                    }
+                }
+                if (nameColIndex !== -1 && idColIndex !== -1) break;
+            }
+            
+            // 解析学生数据
+            if (headerRowIndex !== -1) {
+                for (var di = headerRowIndex + 1; di < rows.length; di++) {
+                    var drow = rows[di];
+                    if (drow.length < Math.max(nameColIndex, idColIndex) + 1) continue;
+                    
+                    var studentName = '';
+                    var studentId = '';
+                    
+                    if (nameColIndex !== -1) {
+                        studentName = isValidStudentName(drow[nameColIndex]);
+                    }
+                    if (idColIndex !== -1) {
+                        studentId = drow[idColIndex];
+                    }
+                    
+                    // 如果没有姓名，尝试找包含中文的列
+                    if (!studentName) {
+                        for (var ai = 0; ai < drow.length; ai++) {
+                            var testName = isValidStudentName(drow[ai]);
+                            if (testName) {
+                                studentName = testName;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!studentName) continue;
+                    
+                    newStudents.push({
+                        id: 's' + Date.now() + '_' + di,
+                        name: studentName,
+                        avatar: studentName.charAt(0)
+                    });
                 }
             }
         } else {
-            // 智能模式：按列解析
+            // ===== CSV/文本格式解析 =====
+            var allRows = [];
+            for (var ri = 0; ri < lines.length; ri++) {
+                allRows.push(parseCSVLine(lines[ri]));
+            }
+            
+            // 查找表头行
+            var headerRowIndex = -1;
+            var nameColIndex = -1;
+            var idColIndex = -1;
+            var headerKeywords = ['学号', '姓名', '名字', '学生姓名', '序号', '编号'];
+            
+            for (var hi = 0; hi < Math.min(allRows.length, 10); hi++) {
+                var row = allRows[hi];
+                var keywordCount = 0;
+                for (var ci = 0; ci < row.length; ci++) {
+                    var cell = row[ci].trim();
+                    for (var ki = 0; ki < headerKeywords.length; ki++) {
+                        if (cell.indexOf(headerKeywords[ki]) !== -1) {
+                            keywordCount++;
+                            if (cell === '姓名' || cell === '名字' || cell === '学生姓名') {
+                                nameColIndex = ci;
+                            }
+                            if (cell === '学号' || cell === '编号') {
+                                idColIndex = ci;
+                            }
+                            break;
+                        }
+                    }
+                }
+                if (keywordCount >= 2) {
+                    headerRowIndex = hi;
+                    break;
+                }
+            }
+            
+            // 解析学生数据
+            var startRow = (headerRowIndex !== -1) ? headerRowIndex + 1 : 0;
+            
             for (var ii = startRow; ii < allRows.length; ii++) {
                 var irow = allRows[ii];
                 if (irow.length === 0) continue;
                 
                 var studentName = '';
-                var studentId = '';
                 
-                // 提取姓名
                 if (nameColIndex !== -1 && nameColIndex < irow.length) {
                     studentName = isValidStudentName(irow[nameColIndex].trim());
                 }
                 
-                // 提取学号
-                if (idColIndex !== -1 && idColIndex < irow.length) {
-                    studentId = irow[idColIndex].trim();
-                }
-                
-                // 如果没有姓名但有学号，用学号作为临时标识
-                if (!studentName && studentId && /^\d{10,13}$/.test(studentId)) {
-                    studentName = studentId; // 后续可以用学号显示
-                }
-                
-                // 如果没有姓名也没有学号，尝试从任意列找姓名
+                // 如果没有找到姓名，尝试从任意列找
                 if (!studentName) {
                     for (var ani = 0; ani < irow.length; ani++) {
                         var aname = isValidStudentName(irow[ani].trim());
@@ -3422,26 +3394,11 @@ function processRosterContent(content, fileName) {
                 
                 if (!studentName) continue;
                 
-                var sId = 's' + Date.now() + '_' + ii;
                 newStudents.push({
-                    id: sId,
+                    id: 's' + Date.now() + '_' + ii,
                     name: studentName,
                     avatar: studentName.charAt(0)
                 });
-                
-                // 解析考勤数据（如果有日期列）
-                for (var dji = 0; dji < dateColIndices.length; dji++) {
-                    var dci = dateColIndices[dji];
-                    if (dci < irow.length) {
-                        var dateKey = normalizeDate(allRows[headerRowIndex][dci].trim());
-                        var mark = irow[dci].trim();
-                        var status = parseAttendanceMark(mark);
-                        if (status) {
-                            if (!importedAttendance[dateKey]) importedAttendance[dateKey] = {};
-                            importedAttendance[dateKey][sId] = status;
-                        }
-                    }
-                }
             }
         }
 
@@ -3478,10 +3435,7 @@ function processRosterContent(content, fileName) {
         renderAttendanceMatrix();
         updateStats();
 
-        var msg = (dateColIndices.length > 0) 
-            ? '成功导入 ' + students.length + ' 名学生及考勤记录' 
-            : '成功导入 ' + students.length + ' 名学生';
-        showToast(msg, 'success');
+        showToast('成功导入 ' + students.length + ' 名学生', 'success');
 }
 
 // 修复乱码文本 - 将UTF-8错误解析的GBK乱码替换为正确字符
