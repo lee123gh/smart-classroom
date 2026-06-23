@@ -3256,25 +3256,42 @@ function processRosterContent(content, fileName) {
         
         if (isHtmlTable) {
             // ===== HTML表格解析 =====
+            // 先将所有HTML标签压缩到单行，避免跨行匹配问题
+            var compressedContent = content.replace(/>\s*</g, '><');
+            
             var rows = [];
             var trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
             var tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
             var trMatch;
             
-            while ((trMatch = trRegex.exec(content)) !== null) {
+            while ((trMatch = trRegex.exec(compressedContent)) !== null) {
                 var rowHtml = trMatch[1];
                 var cells = [];
                 var tdMatch;
                 
                 while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
-                    // 提取纯文本（去除HTML标签）
-                    var cellText = tdMatch[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+                    // 提取纯文本（去除所有HTML标签，解码HTML实体）
+                    var cellText = tdMatch[1]
+                        .replace(/<[^>]+>/g, ' ')  // 移除所有HTML标签
+                        .replace(/&nbsp;/gi, ' ')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"')
+                        .replace(/\s+/g, ' ')       // 合并多个空格
+                        .trim();
                     cells.push(cellText);
                 }
                 
                 if (cells.length > 0) {
                     rows.push(cells);
                 }
+            }
+            
+            // 调试：输出解析结果到控制台
+            console.log('HTML解析结果：共' + rows.length + '行');
+            for (var dbg = 0; dbg < Math.min(rows.length, 5); dbg++) {
+                console.log('行' + dbg + ':', rows[dbg]);
             }
             
             // 查找表头行
@@ -3298,6 +3315,8 @@ function processRosterContent(content, fileName) {
                 if (nameColIndex !== -1 && idColIndex !== -1) break;
             }
             
+            console.log('表头行：' + headerRowIndex + ', 姓名列：' + nameColIndex + ', 学号列：' + idColIndex);
+            
             // 解析学生数据
             if (headerRowIndex !== -1) {
                 for (var di = headerRowIndex + 1; di < rows.length; di++) {
@@ -3307,14 +3326,14 @@ function processRosterContent(content, fileName) {
                     var studentName = '';
                     var studentId = '';
                     
-                    if (nameColIndex !== -1) {
+                    if (nameColIndex !== -1 && nameColIndex < drow.length) {
                         studentName = isValidStudentName(drow[nameColIndex]);
                     }
-                    if (idColIndex !== -1) {
+                    if (idColIndex !== -1 && idColIndex < drow.length) {
                         studentId = drow[idColIndex];
                     }
                     
-                    // 如果没有姓名，尝试找包含中文的列
+                    // 如果没有找到姓名，尝试从任意列找
                     if (!studentName) {
                         for (var ai = 0; ai < drow.length; ai++) {
                             var testName = isValidStudentName(drow[ai]);
