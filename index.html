@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="version" content="2.1">
+    <meta name="version" content="2.2">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1698,6 +1698,17 @@
                         </div>
                     </div>
                 </div>
+                <!-- 视频管理列表 -->
+                <div class="card" style="margin-top:20px;">
+                    <div class="card-header">
+                        <h3>视频管理</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="teacherVideoList">
+                            <!-- 动态生成 -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -2387,47 +2398,61 @@ var learningInterval = null;
 var learningSeconds = 0;
 var isLearning = false;
 
-// 初始化数据（按班级隔离）
-var attendanceData = loadClassIsolatedData('attendanceData', {});
-var homeworkData = loadClassIsolatedData('homeworkData', [
-    { id: 'hw1', title: '数据结构作业一：线性表', desc: '实现单链表的基本操作，包括插入、删除、查找等。', deadline: '2026-06-25T23:59', createdAt: '2026-06-15', submissions: {} },
-    { id: 'hw2', title: '算法设计：排序算法比较', desc: '比较各种排序算法的时间复杂度，并给出实际测试数据。', deadline: '2026-06-28T23:59', createdAt: '2026-06-17', submissions: {} },
-    { id: 'hw3', title: '数据库设计作业', desc: '设计一个学生信息管理系统的数据库结构。', deadline: '2026-07-02T23:59', createdAt: '2026-06-19', submissions: {} }
-]);
-var rollCallHistory = loadClassIsolatedData('rollCallHistory', []);
-var monitorData = {};
+// 初始化数据（按班级隔离）- 必须在 teacherCurrentClassId 确定后调用
+function initClassData() {
+    // 重新加载班级数据，确保使用正确的 teacherCurrentClassId
+    attendanceData = loadClassIsolatedData('attendanceData', {});
+    homeworkData = loadClassIsolatedData('homeworkData', [
+        { id: 'hw1', title: '数据结构作业一：线性表', desc: '实现单链表的基本操作，包括插入、删除、查找等。', deadline: '2026-06-25T23:59', createdAt: '2026-06-15', submissions: {} },
+        { id: 'hw2', title: '算法设计：排序算法比较', desc: '比较各种排序算法的时间复杂度，并给出实际测试数据。', deadline: '2026-06-28T23:59', createdAt: '2026-06-17', submissions: {} },
+        { id: 'hw3', title: '数据库设计作业', desc: '设计一个学生信息管理系统的数据库结构。', deadline: '2026-07-02T23:59', createdAt: '2026-06-19', submissions: {} }
+    ]);
+    rollCallHistory = loadClassIsolatedData('rollCallHistory', []);
+    monitorData = {};
 
-// 视频数据与观看进度（按班级隔离）
-var videoData = loadClassIsolatedData('videoData', []);
-var videoProgressData = loadClassIsolatedData('videoProgressData', {});
+    // 视频数据与观看进度（按班级隔离）
+    videoData = loadClassIsolatedData('videoData', []);
+    videoProgressData = loadClassIsolatedData('videoProgressData', {});
+
+    // 初始化默认视频（仅首次，当前班级无视频时）
+    if (videoData.length === 0) {
+        videoData = [
+            { id: 'v1', title: '数据结构与算法 - 第3章 线性表', desc: '讲解单链表、双链表的基本操作与实现', duration: 2700, uploadedAt: '2026-06-15', url: '' },
+            { id: 'v2', title: '数据库系统概论 - 关系模型', desc: '关系代数、SQL查询语言基础', duration: 1800, uploadedAt: '2026-06-17', url: '' },
+            { id: 'v3', title: '操作系统原理 - 进程管理', desc: '进程调度、死锁、进程同步', duration: 3600, uploadedAt: '2026-06-19', url: '' },
+            { id: 'v4', title: '计算机网络 - TCP/IP协议栈', desc: 'TCP三次握手、UDP、IP路由', duration: 2400, uploadedAt: '2026-06-19', url: '' }
+        ];
+        // 模拟部分学生的观看进度
+        students.forEach(function(s) {
+            videoProgressData[s.id] = {};
+            videoData.forEach(function(v) {
+                var rand = Math.random();
+                if (rand > 0.3) {
+                    videoProgressData[s.id][v.id] = {
+                        watched: Math.floor(v.duration * (0.2 + Math.random() * 0.8)),
+                        completed: rand > 0.6,
+                        lastWatched: '2026-06-19'
+                    };
+                }
+            });
+        });
+        saveClassIsolatedData('videoData', videoData);
+        saveClassIsolatedData('videoProgressData', videoProgressData);
+    }
+}
+
+// 先声明变量
+var attendanceData = {};
+var homeworkData = [];
+var rollCallHistory = [];
+var monitorData = {};
+var videoData = [];
+var videoProgressData = {};
 var selectedVideoFile = null;
 var currentPlayingVideoId = null;
 
-// 初始化默认视频（仅首次，当前班级无视频时）
-if (videoData.length === 0) {
-    videoData = [
-        { id: 'v1', title: '数据结构与算法 - 第3章 线性表', desc: '讲解单链表、双链表的基本操作与实现', duration: 2700, uploadedAt: '2026-06-15', url: '' },
-        { id: 'v2', title: '数据库系统概论 - 关系模型', desc: '关系代数、SQL查询语言基础', duration: 1800, uploadedAt: '2026-06-17', url: '' },
-        { id: 'v3', title: '操作系统原理 - 进程管理', desc: '进程调度、死锁、进程同步', duration: 3600, uploadedAt: '2026-06-19', url: '' },
-        { id: 'v4', title: '计算机网络 - TCP/IP协议栈', desc: 'TCP三次握手、UDP、IP路由', duration: 2400, uploadedAt: '2026-06-19', url: '' }
-    ];
-    // 模拟部分学生的观看进度
-    students.forEach(function(s) {
-        videoProgressData[s.id] = {};
-        videoData.forEach(function(v) {
-            var rand = Math.random();
-            if (rand > 0.3) {
-                videoProgressData[s.id][v.id] = {
-                    watched: Math.floor(v.duration * (0.2 + Math.random() * 0.8)),
-                    completed: rand > 0.6,
-                    lastWatched: '2026-06-19'
-                };
-            }
-        });
-    });
-    saveClassIsolatedData('videoData', videoData);
-    saveClassIsolatedData('videoProgressData', videoProgressData);
-}
+// 在 teacherCurrentClassId 确定后再初始化
+initClassData();
 
 // ===== 班级管理功能 =====
 function generateClassCode() {
@@ -2566,9 +2591,25 @@ function switchTeacherClass(classId) {
     // 更新所有班级选择器
     updateAllTeacherClassSelectors();
 
-    // 刷新当前页面
+    // 刷新所有教师端页面，确保班级数据完全隔离
+    refreshAllTeacherPages();
+}
+
+function refreshAllTeacherPages() {
+    // 刷新仪表盘
     initTeacherDashboard();
+    // 刷新班级管理
     renderTeacherClassPage();
+    // 刷新签到考勤页面（如果可见）
+    renderCheckinPage();
+    // 刷新点名页面
+    renderRollCallPage();
+    // 刷新作业页面
+    renderHomeworkPage();
+    // 刷新在线监督页面
+    renderMonitorPage();
+    // 刷新视频管理列表
+    renderTeacherVideoList();
 }
 
 function saveCurrentClassData() {
@@ -3078,7 +3119,7 @@ function showPage(pageId) {
     if (pageId === 'teacherCheckin') { renderCheckinPage(); updateAllTeacherClassSelectors(); }
     if (pageId === 'teacherRollCall') { renderRollCallPage(); updateAllTeacherClassSelectors(); }
     if (pageId === 'teacherHomework') { renderHomeworkPage(); updateAllTeacherClassSelectors(); }
-    if (pageId === 'teacherMonitor') { renderMonitorPage(); updateAllTeacherClassSelectors(); }
+    if (pageId === 'teacherMonitor') { renderMonitorPage(); renderTeacherVideoList(); updateAllTeacherClassSelectors(); }
 }
 
 function initTeacherDashboard() {
@@ -3859,7 +3900,11 @@ function renderHomeworkPage() {
                 '<div class="homework-meta">' + hw.desc + '</div>' +
                 '<div class="homework-meta" style="margin-top:4px;">截止: ' + new Date(hw.deadline).toLocaleString('zh-CN') + '</div>' +
                 '</div>' +
+                '<div style="display:flex; gap:8px;">' +
                 '<button class="btn btn-info btn-sm" onclick="viewSubmissions(\'' + hw.id + '\')">查看提交</button>' +
+                '<button class="btn btn-outline btn-sm" onclick="editHomework(\'' + hw.id + '\')">编辑</button>' +
+                '<button class="btn btn-sm" style="background:var(--danger); color:#fff;" onclick="deleteHomework(\'' + hw.id + '\')">删除</button>' +
+                '</div>' +
                 '</div>' +
                 '<div class="homework-stats">' +
                 '<div class="homework-stat">' +
@@ -4578,10 +4623,219 @@ function uploadVideo() {
         saveClassIsolatedData('videoData', videoData);
         hideModal('uploadVideoModal');
         renderMonitorPage();
+        renderTeacherVideoList();
         showToast('视频发布成功！', 'success');
         document.getElementById('videoTitle').value = '';
         document.getElementById('videoDesc').value = '';
     }
+}
+
+// ===== 视频管理（教师端）=====
+function renderTeacherVideoList() {
+    var container = document.getElementById('teacherVideoList');
+    if (!container) return;
+
+    if (videoData.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无视频，请上传</div>';
+        return;
+    }
+
+    container.innerHTML = videoData.map(function(v) {
+        return '<div style="display:flex; justify-content:space-between; align-items:center; padding:14px; background:var(--bg-primary); border-radius:var(--radius-sm); margin-bottom:10px;">' +
+                '<div style="flex:1;">' +
+                '<div style="font-weight:600; margin-bottom:4px;">' + v.title + '</div>' +
+                '<div style="font-size:0.85rem; color:var(--text-secondary);">' + v.desc + '</div>' +
+                '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">时长: ' + formatSeconds(v.duration) + ' | 上传: ' + v.uploadedAt + '</div>' +
+                '</div>' +
+                '<div style="display:flex; gap:8px; margin-left:16px;">' +
+                '<button class="btn btn-info btn-sm" onclick="editVideo(\'' + v.id + '\')">编辑</button>' +
+                '<button class="btn btn-sm" style="background:var(--danger); color:#fff;" onclick="deleteVideo(\'' + v.id + '\')">删除</button>' +
+                '</div>' +
+                '</div>';
+    }).join('');
+}
+
+function editVideo(videoId) {
+    var video = videoData.find(function(v) { return v.id === videoId; });
+    if (!video) return;
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = '<div class="modal" style="max-width:500px;">' +
+        '<div class="modal-header">' +
+        '<h3>编辑视频</h3>' +
+        '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">&times;</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+        '<div class="form-group">' +
+        '<label>视频标题</label>' +
+        '<input type="text" id="editVideoTitle" value="' + video.title.replace(/"/g, '&quot;') + '">' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>视频描述</label>' +
+        '<textarea id="editVideoDesc" rows="3">' + video.desc + '</textarea>' +
+        '</div>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+        '<button class="btn btn-success" onclick="saveVideoEdit(\'' + videoId + '\')">保存</button>' +
+        '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+}
+
+function saveVideoEdit(videoId) {
+    var video = videoData.find(function(v) { return v.id === videoId; });
+    if (!video) return;
+
+    var newTitle = document.getElementById('editVideoTitle').value.trim();
+    var newDesc = document.getElementById('editVideoDesc').value.trim();
+
+    if (!newTitle) {
+        showToast('视频标题不能为空', 'error');
+        return;
+    }
+
+    video.title = newTitle;
+    video.desc = newDesc || '暂无描述';
+
+    saveClassIsolatedData('videoData', videoData);
+    document.querySelector('.modal-overlay.active').remove();
+    renderTeacherVideoList();
+    renderMonitorPage();
+    showToast('视频信息已更新', 'success');
+}
+
+function deleteVideo(videoId) {
+    var video = videoData.find(function(v) { return v.id === videoId; });
+    if (!video) return;
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = '<div class="modal" style="max-width:400px;">' +
+        '<div class="modal-header">' +
+        '<h3>确认删除</h3>' +
+        '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">&times;</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+        '<p>确定要删除视频「' + video.title + '」吗？此操作不可恢复。</p>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+        '<button class="btn btn-sm" style="background:var(--danger); color:#fff;" onclick="confirmDeleteVideo(\'' + videoId + '\')">确认删除</button>' +
+        '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+}
+
+function confirmDeleteVideo(videoId) {
+    videoData = videoData.filter(function(v) { return v.id !== videoId; });
+    // 同时清除该视频的观看进度
+    for (var sid in videoProgressData) {
+        if (videoProgressData[sid] && videoProgressData[sid][videoId]) {
+            delete videoProgressData[sid][videoId];
+        }
+    }
+    saveClassIsolatedData('videoData', videoData);
+    saveClassIsolatedData('videoProgressData', videoProgressData);
+    document.querySelector('.modal-overlay.active').remove();
+    renderTeacherVideoList();
+    renderMonitorPage();
+    showToast('视频已删除', 'success');
+}
+
+// ===== 作业管理（教师端删除/编辑）=====
+function deleteHomework(hwId) {
+    var hw = homeworkData.find(function(h) { return h.id === hwId; });
+    if (!hw) return;
+
+    var submitted = Object.keys(hw.submissions).length;
+    var warningMsg = submitted > 0 ? '该作业已有 ' + submitted + ' 名学生提交，删除后提交记录将一并清除。' : '此操作不可恢复。';
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = '<div class="modal" style="max-width:400px;">' +
+        '<div class="modal-header">' +
+        '<h3>确认删除作业</h3>' +
+        '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">&times;</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+        '<p>确定要删除作业「' + hw.title + '」吗？</p>' +
+        '<p style="color:var(--danger); font-size:0.85rem; margin-top:8px;">' + warningMsg + '</p>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+        '<button class="btn btn-sm" style="background:var(--danger); color:#fff;" onclick="confirmDeleteHomework(\'' + hwId + '\')">确认删除</button>' +
+        '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+}
+
+function confirmDeleteHomework(hwId) {
+    homeworkData = homeworkData.filter(function(h) { return h.id !== hwId; });
+    saveClassIsolatedData('homeworkData', homeworkData);
+    document.querySelector('.modal-overlay.active').remove();
+    renderHomeworkPage();
+    renderDashboardHomework();
+    updateStats();
+    showToast('作业已删除', 'success');
+}
+
+function editHomework(hwId) {
+    var hw = homeworkData.find(function(h) { return h.id === hwId; });
+    if (!hw) return;
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = '<div class="modal" style="max-width:500px;">' +
+        '<div class="modal-header">' +
+        '<h3>编辑作业</h3>' +
+        '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">&times;</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+        '<div class="form-group">' +
+        '<label>作业标题</label>' +
+        '<input type="text" id="editHwTitle" value="' + hw.title.replace(/"/g, '&quot;') + '">' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>作业描述</label>' +
+        '<textarea id="editHwDesc" rows="3">' + hw.desc + '</textarea>' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>截止时间</label>' +
+        '<input type="datetime-local" id="editHwDeadline" value="' + hw.deadline + '">' +
+        '</div>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">取消</button>' +
+        '<button class="btn btn-success" onclick="saveHomeworkEdit(\'' + hwId + '\')">保存</button>' +
+        '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+}
+
+function saveHomeworkEdit(hwId) {
+    var hw = homeworkData.find(function(h) { return h.id === hwId; });
+    if (!hw) return;
+
+    var newTitle = document.getElementById('editHwTitle').value.trim();
+    var newDesc = document.getElementById('editHwDesc').value.trim();
+    var newDeadline = document.getElementById('editHwDeadline').value;
+
+    if (!newTitle || !newDeadline) {
+        showToast('请填写完整信息', 'error');
+        return;
+    }
+
+    hw.title = newTitle;
+    hw.desc = newDesc;
+    hw.deadline = newDeadline;
+
+    saveClassIsolatedData('homeworkData', homeworkData);
+    document.querySelector('.modal-overlay.active').remove();
+    renderHomeworkPage();
+    renderDashboardHomework();
+    showToast('作业信息已更新', 'success');
 }
 
 // ===== 通用工具 =====
