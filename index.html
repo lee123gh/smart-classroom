@@ -2776,6 +2776,32 @@ function switchAuthTab(tab) {
 }
 
 var regRole = 'student';
+
+function populateRegClassSelect() {
+    var regClass = document.getElementById('regClass');
+    if (!regClass) return;
+    
+    // 保存当前选中的值
+    var currentValue = regClass.value;
+    
+    // 清空现有选项
+    regClass.innerHTML = '';
+    
+    // 从 classData 加载班级列表
+    classData.forEach(function(cls) {
+        var option = document.createElement('option');
+        option.value = cls.id;
+        option.textContent = cls.name;
+        regClass.appendChild(option);
+    });
+    
+    // 恢复之前选中的值（如果还存在）
+    if (currentValue) {
+        var exists = Array.from(regClass.options).some(function(opt) { return opt.value === currentValue; });
+        if (exists) regClass.value = currentValue;
+    }
+}
+
 function selectRegRole(role) {
     regRole = role;
     var container = document.getElementById('registerFormArea');
@@ -2793,6 +2819,11 @@ function selectRegRole(role) {
     if (regIdLabel) regIdLabel.textContent = role === 'teacher' ? '工号' : '学号';
     if (regId) regId.placeholder = role === 'teacher' ? '请输入工号' : '请输入学号';
     if (regClassGroup) regClassGroup.style.display = role === 'teacher' ? 'none' : 'block';
+    
+    // 学生注册时动态加载班级列表
+    if (role === 'student') {
+        populateRegClassSelect();
+    }
 }
 
 function selectRole(role) {
@@ -3426,10 +3457,32 @@ function processRosterContent(content, fileName) {
             return;
         }
 
-        // 替换当前班级的学生名单
+        // 合并学生名单（保留已有学生的ID和签到数据）
         var cls = classData.find(function(c) { return c.id === teacherCurrentClassId; });
         if (cls) {
-            cls.students = newStudents;
+            // 创建旧学生映射（姓名 -> 学生对象）
+            var oldStudentMap = {};
+            cls.students.forEach(function(s) {
+                oldStudentMap[s.name] = s;
+            });
+            
+            // 合并：新名单中的学生如果已存在则保留旧ID，不存在则创建新ID
+            var mergedStudents = newStudents.map(function(newStu) {
+                var oldStu = oldStudentMap[newStu.name];
+                if (oldStu) {
+                    // 保留旧ID和签到数据
+                    return {
+                        id: oldStu.id,
+                        name: newStu.name,
+                        avatar: newStu.name.charAt(0)
+                    };
+                } else {
+                    // 新学生
+                    return newStu;
+                }
+            });
+            
+            cls.students = mergedStudents;
             localStorage.setItem('classData', JSON.stringify(classData));
         }
         students.length = 0;
