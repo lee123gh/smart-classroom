@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="version" content="3.0">
+    <meta name="version" content="3.1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1227,8 +1227,6 @@
             <p>智慧教学管理平台</p>
         </div>
 
-        <div id="supabaseStatus" style="margin-bottom:16px; padding:10px 14px; border-radius:8px; font-size:0.82rem; line-height:1.5; display:none;"></div>
-
         <!-- 登录/注册切换 -->
         <div style="display:flex; gap:0; margin-bottom:24px; background:var(--bg-primary); padding:4px; border-radius:var(--radius-sm);">
             <button class="tab active" id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;">登录</button>
@@ -2354,12 +2352,14 @@ var DB = {
     }
 };
 
-// 从云端加载所有班级到本地（页面初始化时调用）
+// 从云端加载所有班级到本地（仅页面初始化时调用，不覆盖用户正在操作的本地数据）
+var _cloudSynced = false; // 标记是否已完成首次云端同步
 function syncClassesFromCloud() {
     if (!DB.enabled) return Promise.resolve();
     return DB.loadClasses().then(function(res) {
         if (res.data && res.data.length > 0) {
-            classData = res.data.map(function(row) {
+            // 合并云端和本地班级，不覆盖本地已有的新班级
+            var cloudClasses = res.data.map(function(row) {
                 return {
                     id: row.id,
                     name: row.name,
@@ -2369,7 +2369,12 @@ function syncClassesFromCloud() {
                     createdAt: row.created_at
                 };
             });
-            localStorage.setItem('classData', JSON.stringify(classData)); // 仅本地缓存，数据来自云端，不再回写
+            // 以云端为准，但保留本地新增的班级（云端还没有的）
+            var localOnlyClasses = classData.filter(function(local) {
+                return !cloudClasses.find(function(c) { return c.id === local.id; });
+            });
+            classData = cloudClasses.concat(localOnlyClasses);
+            localStorage.setItem('classData', JSON.stringify(classData));
             if (!teacherCurrentClassId && classData.length > 0) {
                 teacherCurrentClassId = classData[0].id;
                 localStorage.setItem('teacherCurrentClassId', teacherCurrentClassId);
@@ -2378,7 +2383,11 @@ function syncClassesFromCloud() {
             try { updateAllTeacherClassSelectors(); } catch(e) {}
             try { renderTeacherClassPage(); } catch(e) {}
         }
-    }).catch(function(err) { console.warn('从云端加载班级失败：', err); });
+        _cloudSynced = true;
+    }).catch(function(err) {
+        console.warn('从云端加载班级失败：', err);
+        _cloudSynced = true;
+    });
 }
 
 // 同步单个班级的隔离数据到云端
@@ -2703,8 +2712,16 @@ function createNewClass() {
     document.getElementById('newClassName').value = '';
     document.getElementById('newClassTeacher').value = '';
 
-    // 切换到新班级
-    switchTeacherClass(newClass.id);
+    // 切换到新班级并刷新所有页面
+    students = getCurrentClassStudents();
+    attendanceData = loadClassIsolatedData('attendanceData', {});
+    homeworkData = loadClassIsolatedData('homeworkData', []);
+    rollCallHistory = loadClassIsolatedData('rollCallHistory', []);
+    videoData = loadClassIsolatedData('videoData', []);
+    videoProgressData = loadClassIsolatedData('videoProgressData', {});
+    updateAllTeacherClassSelectors();
+    renderTeacherClassPage();
+    refreshAllTeacherPages();
     showToast('班级创建成功！班级号: ' + newClass.code, 'success');
 }
 
@@ -2729,9 +2746,18 @@ function deleteClass(classId) {
     keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
 
     if (teacherCurrentClassId === classId) {
-        switchTeacherClass(classData[0].id);
+        teacherCurrentClassId = classData[0].id;
+        localStorage.setItem('teacherCurrentClassId', teacherCurrentClassId);
+        students = getCurrentClassStudents();
+        attendanceData = loadClassIsolatedData('attendanceData', {});
+        homeworkData = loadClassIsolatedData('homeworkData', []);
+        rollCallHistory = loadClassIsolatedData('rollCallHistory', []);
+        videoData = loadClassIsolatedData('videoData', []);
+        videoProgressData = loadClassIsolatedData('videoProgressData', {});
     }
+    updateAllTeacherClassSelectors();
     renderTeacherClassPage();
+    refreshAllTeacherPages();
     showToast('班级已删除', 'success');
 }
 
@@ -5183,25 +5209,6 @@ document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
 try { renderStudentCheckinHistory(); } catch(e) {}
 try { updateAllTeacherClassSelectors(); } catch(e) {}
 try { updateAllStudentClassSelectors(); } catch(e) {}
-
-// 显示 Supabase 配置状态
-(function() {
-    var el = document.getElementById('supabaseStatus');
-    if (!el) return;
-    if (DB.enabled) {
-        el.style.display = 'block';
-        el.style.background = 'rgba(39, 174, 96, 0.1)';
-        el.style.color = '#27ae60';
-        el.style.border = '1px solid rgba(39, 174, 96, 0.3)';
-        el.innerHTML = '云端同步已启用，账号可跨设备登录';
-    } else {
-        el.style.display = 'block';
-        el.style.background = 'rgba(230, 126, 34, 0.1)';
-        el.style.color = '#e67e22';
-        el.style.border = '1px solid rgba(230, 126, 34, 0.3)';
-        el.innerHTML = '<strong>未配置云端同步</strong>：账号仅在本设备有效，换设备需重新注册。<br>如需跨设备登录，请编辑 index.html 顶部的 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>（参考 Supabase 控制台 → Settings → API）。';
-    }
-})();
 
 // Supabase 已配置时，从云端同步班级数据
 if (DB.enabled) {
