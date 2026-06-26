@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="version" content="2.2">
+    <meta name="version" content="3.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #1a5f4a;
@@ -1226,6 +1227,8 @@
             <p>智慧教学管理平台</p>
         </div>
 
+        <div id="supabaseStatus" style="margin-bottom:16px; padding:10px 14px; border-radius:8px; font-size:0.82rem; line-height:1.5; display:none;"></div>
+
         <!-- 登录/注册切换 -->
         <div style="display:flex; gap:0; margin-bottom:24px; background:var(--bg-primary); padding:4px; border-radius:var(--radius-sm);">
             <button class="tab active" id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;">登录</button>
@@ -2220,6 +2223,187 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ===== Supabase 配置 =====
+// 【重要】请将以下两个值替换为你自己 Supabase 项目的 URL 和 anon key
+// 获取方式：Supabase 控制台 → Project Settings → API
+var SUPABASE_URL = 'https://sofcogpcsdplfffxzocp.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_XHTacn_jzAmtQLiUUMTY5A_pDz4m3EB';
+var _supabaseClient = null;
+var _supabaseReady = false;
+if (window.supabase && SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+    try {
+        _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        _supabaseReady = true;
+    } catch (e) {
+        console.warn('Supabase 初始化失败，回退到本地模式：', e);
+    }
+}
+
+// ===== 数据同步层（DB）=====
+// 当 Supabase 已配置时，数据会同步到云端，实现跨设备登录
+// 未配置时，自动回退到 localStorage，仅本机可用
+var DB = {
+    enabled: _supabaseReady,
+
+    // SHA-256 密码哈希
+    hashPassword: function(password) {
+        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(password)).then(function(hash) {
+            return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+        });
+    },
+
+    // 查询用户（按学号/工号 或 姓名）
+    getUser: function(identifier) {
+        return _supabaseClient
+            .from('app_users')
+            .select('*')
+            .or('user_id.eq.' + identifier + ',name.eq.' + identifier)
+            .maybeSingle();
+    },
+
+    // 按 user_id 精确查询
+    getUserById: function(userId) {
+        return _supabaseClient
+            .from('app_users')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+    },
+
+    // 检查学号/工号是否已注册
+    checkUserExists: function(userId) {
+        return _supabaseClient
+            .from('app_users')
+            .select('user_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+    },
+
+    // 创建用户
+    createUser: function(user) {
+        return _supabaseClient.from('app_users').insert(user);
+    },
+
+    // 加载所有班级
+    loadClasses: function() {
+        return _supabaseClient.from('app_classes').select('*');
+    },
+
+    // 保存（upsert）单个班级
+    saveClass: function(cls) {
+        if (!_supabaseReady) return Promise.resolve();
+        var row = {
+            id: cls.id,
+            name: cls.name,
+            code: cls.code,
+            teacher_name: cls.teacherName || null,
+            students: JSON.parse(JSON.stringify(cls.students || [])),
+            created_at: cls.createdAt
+        };
+        return _supabaseClient.from('app_classes').upsert(row);
+    },
+
+    // 加载班级隔离数据
+    loadData: function(key, classId) {
+        return _supabaseClient
+            .from('app_data')
+            .select('data_value')
+            .eq('data_key', key)
+            .eq('class_id', classId)
+            .maybeSingle();
+    },
+
+    // 保存班级隔离数据
+    saveData: function(key, classId, data) {
+        if (!_supabaseReady) return Promise.resolve();
+        return _supabaseClient.from('app_data').upsert({
+            data_key: key,
+            class_id: classId,
+            data_value: JSON.parse(JSON.stringify(data)),
+            updated_at: new Date().toISOString()
+        });
+    },
+
+    // 加载学生加入的班级
+    loadStudentClasses: function(userId) {
+        return _supabaseClient
+            .from('app_student_classes')
+            .select('*')
+            .eq('user_id', userId);
+    },
+
+    // 保存学生加入的班级
+    saveStudentClass: function(userId, jc) {
+        if (!_supabaseReady) return Promise.resolve();
+        return _supabaseClient.from('app_student_classes').upsert({
+            user_id: userId,
+            class_id: jc.classId,
+            class_name: jc.className,
+            class_code: jc.classCode || null,
+            joined_at: jc.joinedAt
+        });
+    },
+
+    // 删除学生加入的班级
+    deleteStudentClass: function(userId, classId) {
+        if (!_supabaseReady) return Promise.resolve();
+        return _supabaseClient.from('app_student_classes')
+            .delete()
+            .eq('user_id', userId)
+            .eq('class_id', classId);
+    }
+};
+
+// 从云端加载所有班级到本地（页面初始化时调用）
+function syncClassesFromCloud() {
+    if (!DB.enabled) return Promise.resolve();
+    return DB.loadClasses().then(function(res) {
+        if (res.data && res.data.length > 0) {
+            classData = res.data.map(function(row) {
+                return {
+                    id: row.id,
+                    name: row.name,
+                    code: row.code,
+                    teacherName: row.teacher_name || '',
+                    students: row.students || [],
+                    createdAt: row.created_at
+                };
+            });
+            localStorage.setItem('classData', JSON.stringify(classData)); // 仅本地缓存，数据来自云端，不再回写
+            if (!teacherCurrentClassId && classData.length > 0) {
+                teacherCurrentClassId = classData[0].id;
+                localStorage.setItem('teacherCurrentClassId', teacherCurrentClassId);
+            }
+            students = getCurrentClassStudents();
+            try { updateAllTeacherClassSelectors(); } catch(e) {}
+            try { renderTeacherClassPage(); } catch(e) {}
+        }
+    }).catch(function(err) { console.warn('从云端加载班级失败：', err); });
+}
+
+// 同步单个班级的隔离数据到云端
+function syncClassDataToCloud(key, data) {
+    if (!DB.enabled || !teacherCurrentClassId) return;
+    DB.saveData(key, teacherCurrentClassId, data).catch(function(err) {
+        console.warn('同步[' + key + ']到云端失败：', err);
+    });
+}
+
+function syncStudentClassDataToCloud(key, data) {
+    if (!DB.enabled || !studentCurrentClassId) return;
+    DB.saveData(key, studentCurrentClassId, data).catch(function(err) {
+        console.warn('同步[' + key + ']到云端失败：', err);
+    });
+}
+
+// 同步 classData 到云端（教师端创建/删除班级、修改学生名单时调用）
+function syncClassDataArrayToCloud() {
+    if (!DB.enabled) return;
+    classData.forEach(function(cls) {
+        DB.saveClass(cls).catch(function(err) { console.warn('同步班级失败：', err); });
+    });
+}
+
 // Edge兼容polyfill
 if (!Array.prototype.find) {
     Array.prototype.find = function(predicate) {
@@ -2321,7 +2505,7 @@ function cleanGarbledStudentData() {
         if (cls.students.length !== before) cleaned = true;
     });
     if (cleaned) {
-        localStorage.setItem('classData', JSON.stringify(classData));
+        persistClassData();
     }
 }
 cleanGarbledStudentData();
@@ -2336,7 +2520,7 @@ if (classData.length === 0) {
         students: defaultStudents.map(function(s) { return {id: s.id, name: s.name, avatar: s.avatar}; }),
         createdAt: new Date().toISOString().split('T')[0]
     }];
-    localStorage.setItem('classData', JSON.stringify(classData));
+    persistClassData();
     teacherCurrentClassId = classData[0].id;
     localStorage.setItem('teacherCurrentClassId', teacherCurrentClassId);
 }
@@ -2367,6 +2551,13 @@ function getClassDataKey(key) {
 
 function saveClassIsolatedData(key, data) {
     localStorage.setItem(getClassDataKey(key), JSON.stringify(data));
+    syncClassDataToCloud(key, data);
+}
+
+// 统一持久化 classData：同时写本地和云端
+function persistClassData() {
+    localStorage.setItem('classData', JSON.stringify(classData));
+    syncClassDataArrayToCloud();
 }
 
 function loadClassIsolatedData(key, fallback) {
@@ -2380,6 +2571,7 @@ function getStudentClassDataKey(key) {
 
 function saveStudentClassIsolatedData(key, data) {
     localStorage.setItem(getStudentClassDataKey(key), JSON.stringify(data));
+    syncStudentClassDataToCloud(key, data);
 }
 
 function loadStudentClassIsolatedData(key, fallback) {
@@ -2397,6 +2589,19 @@ var currentSubmitHomework = null;
 var learningInterval = null;
 var learningSeconds = 0;
 var isLearning = false;
+
+// 获取当前登录学生在当前班级中的学生ID（修复原来硬编码 's1' 的BUG）
+function getCurrentStudentId() {
+    if (!currentUser || currentRole !== 'student') return 's1';
+    var cls = classData.find(function(c) { return c.id === studentCurrentClassId; });
+    if (!cls) return 's1';
+    // 优先按 user_id 匹配（新注册学生带此字段），回退按姓名匹配
+    var s = cls.students.find(function(stu) { return stu.user_id === currentUser.id; });
+    if (s) return s.id;
+    s = cls.students.find(function(stu) { return stu.name === currentUser.name; });
+    if (s) return s.id;
+    return 's1';
+}
 
 // 初始化数据（按班级隔离）- 必须在 teacherCurrentClassId 确定后调用
 function initClassData() {
@@ -2482,7 +2687,7 @@ function createNewClass() {
         createdAt: new Date().toISOString().split('T')[0]
     };
     classData.push(newClass);
-    localStorage.setItem('classData', JSON.stringify(classData));
+    persistClassData();
 
     // 初始化该班级的数据
     var prevClassId = teacherCurrentClassId;
@@ -2513,7 +2718,7 @@ function deleteClass(classId) {
     if (!confirm('确定删除班级 "' + cls.name + '" 吗？删除后不可恢复。')) return;
 
     classData = classData.filter(function(c) { return c.id !== classId; });
-    localStorage.setItem('classData', JSON.stringify(classData));
+    persistClassData();
 
     // 清理该班级的隔离数据
     var keysToRemove = [];
@@ -2678,13 +2883,15 @@ function joinClassByCode() {
         return;
     }
 
-    studentJoinedClasses.push({
+    var jcEntry = {
         classId: cls.id,
         className: cls.name,
         classCode: cls.code,
         joinedAt: new Date().toISOString().split('T')[0]
-    });
+    };
+    studentJoinedClasses.push(jcEntry);
     localStorage.setItem('studentJoinedClasses', JSON.stringify(studentJoinedClasses));
+    if (DB.enabled && currentUser) DB.saveStudentClass(currentUser.id, jcEntry).catch(function(e){ console.warn(e); });
 
     // 将学生添加到班级学生列表
     if (currentUser) {
@@ -2693,9 +2900,10 @@ function joinClassByCode() {
             cls.students.push({
                 id: 's' + Date.now(),
                 name: currentUser.name,
-                avatar: currentUser.name.charAt(0)
+                avatar: currentUser.name.charAt(0),
+                user_id: currentUser.id
             });
-            localStorage.setItem('classData', JSON.stringify(classData));
+            persistClassData();
         }
     }
 
@@ -2776,6 +2984,7 @@ function leaveClass(classId) {
     if (!confirm('确定退出该班级吗？')) return;
     studentJoinedClasses = studentJoinedClasses.filter(function(c) { return c.classId !== classId; });
     localStorage.setItem('studentJoinedClasses', JSON.stringify(studentJoinedClasses));
+    if (DB.enabled && currentUser) DB.deleteStudentClass(currentUser.id, classId).catch(function(e){ console.warn(e); });
 
     if (studentCurrentClassId === classId) {
         if (studentJoinedClasses.length > 0) {
@@ -2906,7 +3115,7 @@ function selectRole(role) {
     }
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
     var username = document.getElementById('username').value.trim();
     var password = document.getElementById('password').value;
@@ -2915,27 +3124,60 @@ function handleLogin(e) {
         return;
     }
 
-    // 必须注册后才能登录
-    var regUser = registeredUsers.find(function(u) { return u.name === username || u.id === username; });
-    if (!regUser) {
-        showToast('用户不存在，请先注册', 'error');
-        return;
+    var loginBtn = document.querySelector('#loginFormArea button[type="submit"]');
+    if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = '登录中...'; }
+
+    var regUser = null;
+
+    if (DB.enabled) {
+        // 云端模式：从 Supabase 查询用户
+        try {
+            var res = await DB.getUser(username);
+            if (res.data) {
+                var hash = await DB.hashPassword(password);
+                if (hash !== res.data.password_hash) {
+                    if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '登录'; }
+                    showToast('密码错误，请重试', 'error');
+                    return;
+                }
+                regUser = {
+                    name: res.data.name,
+                    id: res.data.user_id,
+                    phone: res.data.phone,
+                    role: res.data.role,
+                    class: res.data.class_name,
+                    classId: res.data.class_id,
+                    registeredAt: res.data.registered_at
+                };
+            }
+        } catch (err) {
+            console.warn('云端查询用户失败：', err);
+        }
+    } else {
+        // 本地模式：从 localStorage 查询
+        regUser = registeredUsers.find(function(u) { return u.name === username || u.id === username; });
+        if (regUser && password !== regUser.password) {
+            if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '登录'; }
+            showToast('密码错误，请重试', 'error');
+            return;
+        }
     }
 
-    // 校验密码
-    if (password !== regUser.password) {
-        showToast('密码错误，请重试', 'error');
+    if (!regUser) {
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '登录'; }
+        showToast('用户不存在，请先注册', 'error');
         return;
     }
 
     // 校验角色：注册为教师只能登录教师端，注册为学生只能登录学生端
     if (regUser.role && regUser.role !== currentRole) {
         var expectedRoleText = regUser.role === 'teacher' ? '教师端' : '学生端';
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '登录'; }
         showToast('该账号注册为' + (regUser.role === 'teacher' ? '教师' : '学生') + '，请在' + expectedRoleText + '登录', 'error');
         return;
     }
 
-    currentUser = { name: regUser.name, role: currentRole };
+    currentUser = { name: regUser.name, role: currentRole, id: regUser.id };
 
     if (currentRole === 'teacher') {
         document.getElementById('loginPage').style.display = 'none';
@@ -2956,7 +3198,20 @@ function handleLogin(e) {
         var studentNameEls = document.querySelectorAll('[id^="studentNameDisplay"]');
         for (var i = 0; i < studentNameEls.length; i++) { studentNameEls[i].textContent = currentUser.name; }
         document.querySelector('#studentApp .user-avatar').textContent = currentUser.name[0];
-        
+
+        // 云端模式：从 Supabase 加载该学生已加入的班级
+        if (DB.enabled) {
+            try {
+                var scRes = await DB.loadStudentClasses(regUser.id);
+                if (scRes.data && scRes.data.length > 0) {
+                    studentJoinedClasses = scRes.data.map(function(row) {
+                        return { classId: row.class_id, className: row.class_name, classCode: row.class_code, joinedAt: row.joined_at };
+                    });
+                    localStorage.setItem('studentJoinedClasses', JSON.stringify(studentJoinedClasses));
+                }
+            } catch (err) { console.warn('加载学生班级失败：', err); }
+        }
+
         // 学生登录时使用选择的班级
         var selectedClassId = document.getElementById('classSelect').value;
         if (selectedClassId) {
@@ -2967,12 +3222,14 @@ function handleLogin(e) {
             if (selectedClass) {
                 var alreadyJoined = studentJoinedClasses.some(function(jc) { return jc.classId === selectedClassId; });
                 if (!alreadyJoined) {
-                    studentJoinedClasses.push({ classId: selectedClassId, className: selectedClass.name, joinedAt: new Date().toISOString() });
+                    var jcEntry = { classId: selectedClassId, className: selectedClass.name, classCode: selectedClass.code, joinedAt: new Date().toISOString().split('T')[0] };
+                    studentJoinedClasses.push(jcEntry);
                     localStorage.setItem('studentJoinedClasses', JSON.stringify(studentJoinedClasses));
+                    if (DB.enabled) DB.saveStudentClass(regUser.id, jcEntry).catch(function(e){ console.warn(e); });
                 }
             }
         }
-        
+
         // 初始化学生端班级选择器
         if (studentJoinedClasses.length > 0 && !studentCurrentClassId) {
             studentCurrentClassId = studentJoinedClasses[0].classId;
@@ -2990,9 +3247,11 @@ function handleLogin(e) {
         renderStudentClassPage();
         initStudentDashboard();
     }
+
+    if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = '登录'; }
 }
 
-function handleRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
     var name = document.getElementById('regName').value.trim();
     var id = document.getElementById('regId').value.trim();
@@ -3022,39 +3281,83 @@ function handleRegister(e) {
         return;
     }
 
-    if (registeredUsers.find(function(u) { return u.id === id; })) {
-        showToast('该学号/工号已注册', 'error');
-        return;
+    var regBtn = document.querySelector('#registerFormArea button[type="submit"]');
+    if (regBtn) { regBtn.disabled = true; regBtn.textContent = '注册中...'; }
+
+    // 检查是否已注册
+    if (DB.enabled) {
+        try {
+            var existRes = await DB.checkUserExists(id);
+            if (existRes.data) {
+                if (regBtn) { regBtn.disabled = false; regBtn.textContent = '注册'; }
+                showToast('该学号/工号已注册', 'error');
+                return;
+            }
+        } catch (err) {
+            console.warn('检查用户失败：', err);
+        }
+    } else {
+        if (registeredUsers.find(function(u) { return u.id === id; })) {
+            if (regBtn) { regBtn.disabled = false; regBtn.textContent = '注册'; }
+            showToast('该学号/工号已注册', 'error');
+            return;
+        }
     }
 
-    var newUser = {
-        name: name, id: id, phone: phone, password: password,
-        role: regRole,
-        class: regRole === 'student' ? classText : null,
-        classId: regRole === 'student' ? className.value : null,
-        registeredAt: new Date().toISOString().split('T')[0]
-    };
-    registeredUsers.push(newUser);
-    localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+    var registeredAt = new Date().toISOString().split('T')[0];
+
+    if (DB.enabled) {
+        // 云端模式：写入 Supabase
+        try {
+            var hash = await DB.hashPassword(password);
+            var insertRes = await DB.createUser({
+                user_id: id,
+                name: name,
+                phone: phone,
+                password_hash: hash,
+                role: regRole,
+                class_name: regRole === 'student' ? classText : null,
+                class_id: regRole === 'student' ? className.value : null,
+                registered_at: registeredAt
+            });
+            if (insertRes.error) throw insertRes.error;
+        } catch (err) {
+            if (regBtn) { regBtn.disabled = false; regBtn.textContent = '注册'; }
+            showToast('注册失败：' + (err.message || err), 'error');
+            return;
+        }
+    } else {
+        // 本地模式：写入 localStorage
+        var newUser = {
+            name: name, id: id, phone: phone, password: password,
+            role: regRole,
+            class: regRole === 'student' ? classText : null,
+            classId: regRole === 'student' ? className.value : null,
+            registeredAt: registeredAt
+        };
+        registeredUsers.push(newUser);
+        localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+    }
 
     // 学生注册时自动添加到选择的班级
     if (regRole === 'student') {
         var selectedClassId = document.getElementById('regClass').value;
         var selectedClass = classData.find(function(c) { return c.id === selectedClassId; });
-        var newStudent = { id: 's' + Date.now(), name: name, avatar: name.charAt(0) };
-        
+        // 新增 user_id 字段，用于学生端定位当前登录学生的数据
+        var newStudent = { id: 's' + Date.now(), name: name, avatar: name.charAt(0), user_id: id };
+
         if (selectedClass) {
             selectedClass.students.push(newStudent);
-            localStorage.setItem('classData', JSON.stringify(classData));
+            persistClassData();
             students = selectedClass.students;
         } else if (classData.length > 0) {
-            // 如果选择的班级不存在，添加到第一个班级
             classData[0].students.push(newStudent);
-            localStorage.setItem('classData', JSON.stringify(classData));
+            persistClassData();
             students = classData[0].students;
         }
     }
 
+    if (regBtn) { regBtn.disabled = false; regBtn.textContent = '注册'; }
     showToast('注册成功！请登录', 'success');
 
     // 切换到登录并自动填充
@@ -3571,7 +3874,7 @@ function processRosterContent(content, fileName) {
             });
             
             cls.students = mergedStudents;
-            localStorage.setItem('classData', JSON.stringify(classData));
+            persistClassData();
         }
         students.length = 0;
         newStudents.forEach(function(s) { students.push(s); });
@@ -4195,7 +4498,7 @@ function showStudentPage(pageId) {
 }
 
 function initStudentDashboard() {
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
     var today = new Date().toISOString().split('T')[0];
     var todayData = attendanceData[today] || {};
     var myStatus = todayData[studentId];
@@ -4252,7 +4555,7 @@ function studentCheckin() {
 
     var today = new Date().toISOString().split('T')[0];
     if (!attendanceData[today]) attendanceData[today] = {};
-    attendanceData[today]['s1'] = 'present';
+    attendanceData[today][getCurrentStudentId()] = 'present';
     saveStudentClassIsolatedData('attendanceData', attendanceData);
 
     document.getElementById('studentCheckinStatus').textContent = '已签到';
@@ -4268,7 +4571,7 @@ function renderStudentCheckinHistory() {
     var dates = Object.keys(attendanceData).sort().reverse();
 
     tbody.innerHTML = dates.map(function(date) {
-        var status = attendanceData[date]['s1'];
+        var status = attendanceData[date][getCurrentStudentId()];
         if (!status) return '';
         var badge = '';
         if (status === 'present') badge = '<span class="badge badge-success">已签到</span>';
@@ -4284,7 +4587,7 @@ function renderStudentCheckinHistory() {
 }
 
 function renderStudentHomework() {
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
 
     // 待完成
     var pending = homeworkData.filter(function(hw) { return !hw.submissions[studentId]; });
@@ -4355,7 +4658,7 @@ function submitHomework() {
     if (!currentSubmitHomework) return;
     var hw = homeworkData.find(function(h) { return h.id === currentSubmitHomework; });
     if (hw) {
-        hw.submissions['s1'] = {
+        hw.submissions[getCurrentStudentId()] = {
             submittedAt: new Date().toLocaleString('zh-CN'),
             fileName: document.getElementById('fileName').textContent || null,
             comment: document.getElementById('submitComment').value,
@@ -4369,7 +4672,7 @@ function submitHomework() {
 }
 
 function renderStudentGrades() {
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
     var tbody = document.getElementById('studentGradeTable');
     var grades = [];
 
@@ -4407,7 +4710,7 @@ function renderStudentGrades() {
 // 学生端 - 视频学习
 function renderLearningResources() {
     var container = document.getElementById('learningResources');
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
 
     container.innerHTML = videoData.map(function(v) {
         var sp = ((videoProgressData[studentId] || {})[v.id]) || {};
@@ -4442,7 +4745,7 @@ function playVideo(videoId) {
     var video = videoData.find(function(v) { return v.id === videoId; });
     if (!video) return;
     currentPlayingVideoId = videoId;
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
 
     document.getElementById('videoListArea').style.display = 'none';
     document.getElementById('videoPlayerCard').style.display = 'block';
@@ -4470,7 +4773,7 @@ function playVideo(videoId) {
 }
 
 function simulateVideoPlayback(video) {
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
     if (!videoProgressData[studentId]) videoProgressData[studentId] = {};
     if (!videoProgressData[studentId][video.id]) {
         videoProgressData[studentId][video.id] = { watched: 0, completed: false, lastWatched: new Date().toISOString().split('T')[0] };
@@ -4505,7 +4808,7 @@ function onVideoTimeUpdate() {
     var video = videoData.find(function(v) { return v.id === videoId; });
     if (!video) return;
 
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
     if (!videoProgressData[studentId]) videoProgressData[studentId] = {};
     if (!videoProgressData[studentId][videoId]) {
         videoProgressData[studentId][videoId] = { watched: 0, completed: false, lastWatched: new Date().toISOString().split('T')[0] };
@@ -4528,7 +4831,7 @@ function onVideoTimeUpdate() {
 function onVideoEnded() {
     var videoId = currentPlayingVideoId;
     if (!videoId) return;
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
     if (!videoProgressData[studentId]) videoProgressData[studentId] = {};
     if (!videoProgressData[studentId][videoId]) {
         videoProgressData[studentId][videoId] = { watched: 0, completed: false, lastWatched: '' };
@@ -4544,7 +4847,7 @@ function onVideoEnded() {
 }
 
 function updateVideoProgressUI(video) {
-    var studentId = 's1';
+    var studentId = getCurrentStudentId();
     var sp = ((videoProgressData[studentId] || {})[video.id]) || {};
     var watched = sp.watched || 0;
     var progress = video.duration > 0 ? Math.min(100, Math.round((watched / video.duration) * 100)) : 0;
@@ -4880,6 +5183,34 @@ document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
 try { renderStudentCheckinHistory(); } catch(e) {}
 try { updateAllTeacherClassSelectors(); } catch(e) {}
 try { updateAllStudentClassSelectors(); } catch(e) {}
+
+// 显示 Supabase 配置状态
+(function() {
+    var el = document.getElementById('supabaseStatus');
+    if (!el) return;
+    if (DB.enabled) {
+        el.style.display = 'block';
+        el.style.background = 'rgba(39, 174, 96, 0.1)';
+        el.style.color = '#27ae60';
+        el.style.border = '1px solid rgba(39, 174, 96, 0.3)';
+        el.innerHTML = '云端同步已启用，账号可跨设备登录';
+    } else {
+        el.style.display = 'block';
+        el.style.background = 'rgba(230, 126, 34, 0.1)';
+        el.style.color = '#e67e22';
+        el.style.border = '1px solid rgba(230, 126, 34, 0.3)';
+        el.innerHTML = '<strong>未配置云端同步</strong>：账号仅在本设备有效，换设备需重新注册。<br>如需跨设备登录，请编辑 index.html 顶部的 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>（参考 Supabase 控制台 → Settings → API）。';
+    }
+})();
+
+// Supabase 已配置时，从云端同步班级数据
+if (DB.enabled) {
+    syncClassesFromCloud().then(function() {
+        try { updateAllTeacherClassSelectors(); } catch(e) {}
+        try { populateRegClassSelect(); } catch(e) {}
+        try { populateLoginClassSelect(); } catch(e) {}
+    });
+}
 </script>
 </body>
 </html>
